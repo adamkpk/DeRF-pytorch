@@ -1,11 +1,15 @@
+import os
+import pickle
+from datetime import datetime
 import numpy as np
 from tqdm import tqdm
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
+from PIL import Image
+# import matplotlib.pyplot as plt
 
-from utils.loader import load_data
+from config import DATASET_NAME, DATASET_SIZE_DICT
 
 
 class NeRF(nn.Module):
@@ -32,9 +36,9 @@ class NeRF(nn.Module):
         self.relu = nn.ReLU()
 
     @staticmethod
-    def positional_encoding(x, L):
+    def positional_encoding(x, dim):
         out = [x]
-        for j in range(L):
+        for j in range(dim):
             out.append(torch.sin(2 ** j * x))
             out.append(torch.cos(2 ** j * x))
         return torch.cat(out, dim=1)
@@ -103,15 +107,15 @@ def render_rays(nerf_model, ray_origins, ray_directions, hn=0, hf=0.5, nb_bins=1
     return c + 1 - weight_sum.unsqueeze(-1)
 
 
-def train(nerf_model, optimizer, scheduler, data_loader, device='cpu', hn=0, hf=1, nb_epochs=int(1e5),
-          nb_bins=192, H=400, W=400):
+def train(nerf_model, optimizer, scheduler, loader, testing_dataset, dev='cpu', hn=0, hf=1, nb_epochs=int(1e5),
+          nb_bins=192, height=400, width=400):
     training_loss = []
 
     for i in range(nb_epochs):
-        for batch in tqdm(data_loader):
-            ray_origins = batch[:, :3].to(device)
-            ray_directions = batch[:, 3:6].to(device)
-            ground_truth_px_values = batch[:, 6:].to(device)
+        for batch in tqdm(loader):
+            ray_origins = batch[:, :3].to(dev)
+            ray_directions = batch[:, 3:6].to(dev)
+            ground_truth_px_values = batch[:, 6:].to(dev)
             
             regenerated_px_values = render_rays(nerf_model, ray_origins, ray_directions, hn=hn, hf=hf, nb_bins=nb_bins)
             loss = ((ground_truth_px_values - regenerated_px_values) ** 2).sum()
@@ -127,61 +131,92 @@ def train(nerf_model, optimizer, scheduler, data_loader, device='cpu', hn=0, hf=
         print('Saved checkpoint')
 
         for img_index in range(200):
-            test(hn, hf, testing_dataset, img_index=img_index, nb_bins=nb_bins, H=H, W=W)
+            test(nerf_model, hn, hf, testing_dataset, epoch=i, img_index=img_index, nb_bins=nb_bins,
+                 height=height, width=width)
 
     return training_loss
 
 
 @torch.no_grad()
-def test(hn, hf, dataset, chunk_size=10, img_index=0, nb_bins=192, H=400, W=400):
-    ray_origins = dataset[img_index * H * W: (img_index + 1) * H * W, :3]
-    ray_directions = dataset[img_index * H * W: (img_index + 1) * H * W, 3:6]
+def test(nerf_model, hn, hf, dataset, chunk_size=10, epoch=0, img_index=0, nb_bins=192, height=400, width=400):
+    ray_origins = dataset[img_index * height * width: (img_index + 1) * height * width, :3]
+    ray_directions = dataset[img_index * height * width: (img_index + 1) * height * width, 3:6]
 
     data = []   # list of regenerated pixel values
 
-    for i in tqdm(range(int(np.ceil(H / chunk_size)))):   # iterate over chunks
+    for i in tqdm(range(int(np.ceil(height / chunk_size)))):   # iterate over chunks
         # Get chunk of rays
-        ray_origins_ = ray_origins[i * W * chunk_size: (i + 1) * W * chunk_size].to(device)
-        ray_directions_ = ray_directions[i * W * chunk_size: (i + 1) * W * chunk_size].to(device)
-        regenerated_px_values = render_rays(model, ray_origins_, ray_directions_, hn=hn, hf=hf, nb_bins=nb_bins)
+        ray_origins_ = ray_origins[i * width * chunk_size: (i + 1) * width * chunk_size].to(device)
+        ray_directions_ = ray_directions[i * width * chunk_size: (i + 1) * width * chunk_size].to(device)
+        regenerated_px_values = render_rays(nerf_model, ray_origins_, ray_directions_, hn=hn, hf=hf, nb_bins=nb_bins)
         data.append(regenerated_px_values)
 
-    img = torch.cat(data).data.cpu().numpy().reshape(H, W, 3)
+    img = torch.cat(data).data.cpu().numpy().reshape(height, width, 3)
 
     """
-    fig = plt.figure()
-    ax = plt.Axes(fig, [0., 0., 1., 1.])
-    ax.set_axis_off()
-    fig.add_axes(ax)
-    ax.imshow(img, aspect='equal')
-    plt.savefig(f'novel_views/img_{img_index}.png', bbox_inches='tight')
-    plt.close()
-    """
-
     plt.figure()
     plt.imshow(img)
     plt.savefig(f'novel_views/img_{img_index}.png', bbox_inches='tight')
     plt.close()
+    """
+
+    img_dir = os.path.join(f'./../results/{DATASET_NAME}', run_date)
+    os.makedirs(img_dir, exist_ok=True)
+    Image.fromarray((img * 255).astype(np.uint8)).save(os.path.join(img_dir, f'e{epoch}_img{img_index}.png'))
+
+
+def train_and_test():
+    # training_dataset = torch.from_numpy(np.load('training_data.pkl', allow_pickle=True))
+    # testing_dataset = torch.from_numpy(np.load('testing_data.pkl', allow_pickle=True))
+
+    with open(f'./../data/{DATASET_NAME}_data.pkl', 'rb') as f:
+        full_dataset = pickle.load(f)
+
+    training_dataset = full_dataset[0]
+    testing_dataset = full_dataset[1]
+
+    print('Shapes:', training_dataset.shape, testing_dataset.shape)
+
+    model = NeRF(hidden_dim=256).to(device)
+
+    model_optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    model_scheduler = torch.optim.lr_scheduler.MultiStepLR(model_optimizer, milestones=[2, 4, 8], gamma=0.5)
+
+    data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
+
+    t_loss = train(model, model_optimizer, model_scheduler, data_loader, testing_dataset,
+                   nb_epochs=5, dev=device, hn=2, hf=6, nb_bins=192,
+                   height=DATASET_SIZE_DICT[DATASET_NAME][1], width=DATASET_SIZE_DICT[DATASET_NAME][0])
+
+    print('Training loss:', t_loss)
+
+
+def test_last_epoch():
+    """
+    with open(f'./../data/{DATASET_NAME}_data.pkl', 'rb') as f:
+        full_dataset = pickle.load(f)
+
+    testing_dataset = full_dataset[1]
+    """
+
+    testing_dataset = torch.from_numpy(np.load('testing_data.pkl', allow_pickle=True))
+
+    epoch = 4
+
+    model = NeRF(hidden_dim=256).to(device)
+
+    model.load_state_dict(torch.load(f'./../checkpoints/{DATASET_NAME}_e{epoch}.pt'))
+    # model.eval()
+
+    for img_index in range(200):
+        test(model, hn=2, hf=6, dataset=testing_dataset, epoch=epoch, img_index=img_index, nb_bins=192,
+             height=DATASET_SIZE_DICT[DATASET_NAME][1], width=DATASET_SIZE_DICT[DATASET_NAME][0])
 
 
 device = 'cuda'
 
-training_dataset = torch.from_numpy(np.load('training_data.pkl', allow_pickle=True))
-testing_dataset = torch.from_numpy(np.load('testing_data.pkl', allow_pickle=True))
+run_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-# training_dataset = load_data('blender', 'train')
-# testing_dataset = load_data('blender', 'test')
+train_and_test()
 
-print('Shapes:', training_dataset.shape, testing_dataset.shape)
-
-model = NeRF(hidden_dim=256).to(device)
-
-model_optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
-scheduler = torch.optim.lr_scheduler.MultiStepLR(model_optimizer, milestones=[2, 4, 8], gamma=0.5)
-
-data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
-
-t_loss = train(model, model_optimizer, scheduler, data_loader,
-               nb_epochs=5, device=device, hn=2, hf=6, nb_bins=192, H=400, W=400)
-
-print('Training loss:', t_loss)
+# test_last_epoch()
