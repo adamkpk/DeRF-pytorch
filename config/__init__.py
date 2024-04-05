@@ -10,5 +10,3 @@ DATASET_TEST_SIZE = {
     'blender': 200,
     'llff': 20
 }
-
-# TODO: near and far planes

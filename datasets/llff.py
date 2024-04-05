@@ -283,7 +283,9 @@ class LLFFDataset(Dataset):
     def __getitem__(self, idx):
         if self.split == 'train': # use data in the buffers
             sample = {'rays': self.all_rays[idx],
-                      'rgbs': self.all_rgbs[idx]}
+                      'rgbs': self.all_rgbs[idx],
+                      'near': self.bounds.min(),
+                      'far': min(8 * self.bounds.min(), self.bounds.max())}
 
         else:
             if self.split == 'val':
@@ -306,7 +308,9 @@ class LLFFDataset(Dataset):
                               1) # (h*w, 8)
 
             sample = {'rays': rays,
-                      'c2w': c2w}
+                      'c2w': c2w,
+                      'near': near,
+                      'far': far}
 
             if self.split == 'val':
                 img = Image.open(self.image_path_val).convert('RGB')

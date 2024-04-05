@@ -81,7 +81,9 @@ class BlenderDataset(Dataset):
     def __getitem__(self, idx):
         if self.split == 'train': # use data in the buffers
             sample = {'rays': self.all_rays[idx],
-                      'rgbs': self.all_rgbs[idx]}
+                      'rgbs': self.all_rgbs[idx],
+                      'near': self.near,
+                      'far': self.far}
 
         else: # create data for each image separately
             frame = self.meta['frames'][idx]
@@ -104,6 +106,8 @@ class BlenderDataset(Dataset):
             sample = {'rays': rays,
                       'rgbs': img,
                       'c2w': c2w,
-                      'valid_mask': valid_mask}
+                      'valid_mask': valid_mask,
+                      'near': self.near,
+                      'far': self.far}
 
         return sample

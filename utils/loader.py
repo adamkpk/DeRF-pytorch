@@ -63,4 +63,4 @@ def load_data(split='train'):
             #     # out_set[len(dataset) * i + j] = torch.cat((ray_org_dir, gt_pixel_color))
             #     out_set[len(dataset) * i + j] = ray_org_dir
 
-    return out_set
+    return out_set, dataset[0]['near'], dataset[0]['far']

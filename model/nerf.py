@@ -167,6 +167,9 @@ def train_and_test():
     training_dataset = full_dataset[0]
     testing_dataset = full_dataset[1]
 
+    near = full_dataset[2]
+    far = full_dataset[3]
+
     print('Shapes:', training_dataset.shape, testing_dataset.shape)
 
     model = NeRF(hidden_dim=256).to(device)
@@ -177,7 +180,7 @@ def train_and_test():
     data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
     t_loss = train(model, model_optimizer, model_scheduler, data_loader, testing_dataset,
-                   nb_epochs=5, dev=device, hn=2, hf=6, nb_bins=192,
+                   nb_epochs=5, dev=device, hn=near, hf=far, nb_bins=192,
                    height=DATASET_SIZE_DICT[DATASET_NAME][1], width=DATASET_SIZE_DICT[DATASET_NAME][0])
 
     print('Training loss:', t_loss)
@@ -189,6 +192,9 @@ def test_last_epoch():
 
     testing_dataset = full_dataset[1]
 
+    near = full_dataset[2]
+    far = full_dataset[3]
+
     # testing_dataset = torch.from_numpy(np.load('./../data/testing_data.pkl', allow_pickle=True))
 
     epoch = 4
@@ -199,7 +205,7 @@ def test_last_epoch():
     # model.eval()
 
     for img_index in range(DATASET_TEST_SIZE[DATASET_NAME]):
-        test(model, hn=2, hf=6, dataset=testing_dataset, epoch=epoch, img_index=img_index, nb_bins=192,
+        test(model, hn=near, hf=far, dataset=testing_dataset, epoch=epoch, img_index=img_index, nb_bins=192,
              height=DATASET_SIZE_DICT[DATASET_NAME][1], width=DATASET_SIZE_DICT[DATASET_NAME][0])
 
 
@@ -207,6 +213,6 @@ device = 'cuda'
 
 run_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-# train_and_test()
+train_and_test()
 
-test_last_epoch()
+# test_last_epoch()
