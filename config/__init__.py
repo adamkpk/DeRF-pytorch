@@ -4,7 +4,7 @@
 DATASET_NAME = 'llff'
 
 # Options: 1, 2
-TRAINING_ACCELERATION = 2
+TRAINING_ACCELERATION = 1
 
 DATASET_SIZE_DICT = {
     'blender': tuple([400, 400]),
