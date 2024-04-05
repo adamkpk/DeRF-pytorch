@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from PIL import Image
 
-from config import DATASET_NAME, DATASET_SIZE_DICT, DATASET_TEST_SIZE
+from config import DATASET_NAME, DATASET_SIZE_DICT, DATASET_TEST_SIZE, TRAINING_ACCELERATION, DATASET_EPOCHS, DATASET_MILESTONES
 
 
 class NeRF(nn.Module):
@@ -174,14 +174,15 @@ def train_and_test():
 
     model = NeRF(hidden_dim=256).to(device)
 
-    model_optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
-    model_scheduler = torch.optim.lr_scheduler.MultiStepLR(model_optimizer, milestones=[2, 4, 8], gamma=0.5)
+    model_optimizer = torch.optim.Adam(model.parameters(), lr=5e-4 * TRAINING_ACCELERATION)
+    model_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        model_optimizer, milestones=np.array(DATASET_MILESTONES[DATASET_NAME]) / TRAINING_ACCELERATION, gamma=0.5)
 
     data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
     t_loss = train(model, model_optimizer, model_scheduler, data_loader, testing_dataset,
-                   nb_epochs=5, dev=device, hn=near, hf=far, nb_bins=192,
-                   height=DATASET_SIZE_DICT[DATASET_NAME][1], width=DATASET_SIZE_DICT[DATASET_NAME][0])
+                   nb_epochs=int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), dev=device, hn=near, hf=far,
+                   nb_bins=192, height=DATASET_SIZE_DICT[DATASET_NAME][1], width=DATASET_SIZE_DICT[DATASET_NAME][0])
 
     print('Training loss:', t_loss)
 
