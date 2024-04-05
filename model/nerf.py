@@ -7,9 +7,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from PIL import Image
-# import matplotlib.pyplot as plt
 
-from config import DATASET_NAME, DATASET_SIZE_DICT
+from config import DATASET_NAME, DATASET_SIZE_DICT, DATASET_TEST_SIZE
 
 
 class NeRF(nn.Module):
@@ -130,7 +129,7 @@ def train(nerf_model, optimizer, scheduler, loader, testing_dataset, dev='cpu', 
         torch.save(nerf_model.state_dict(), f'./../checkpoints/e{i}.pt')
         print('Saved checkpoint')
 
-        for img_index in range(200):
+        for img_index in range(DATASET_TEST_SIZE[DATASET_NAME]):
             test(nerf_model, hn, hf, testing_dataset, epoch=i, img_index=img_index, nb_bins=nb_bins,
                  height=height, width=width)
 
@@ -153,21 +152,14 @@ def test(nerf_model, hn, hf, dataset, chunk_size=10, epoch=0, img_index=0, nb_bi
 
     img = torch.cat(data).data.cpu().numpy().reshape(height, width, 3)
 
-    """
-    plt.figure()
-    plt.imshow(img)
-    plt.savefig(f'novel_views/img_{img_index}.png', bbox_inches='tight')
-    plt.close()
-    """
-
     img_dir = os.path.join(f'./../results/{DATASET_NAME}', run_date)
     os.makedirs(img_dir, exist_ok=True)
     Image.fromarray((img * 255).astype(np.uint8)).save(os.path.join(img_dir, f'e{epoch}_img{img_index}.png'))
 
 
 def train_and_test():
-    # training_dataset = torch.from_numpy(np.load('training_data.pkl', allow_pickle=True))
-    # testing_dataset = torch.from_numpy(np.load('testing_data.pkl', allow_pickle=True))
+    # training_dataset = torch.from_numpy(np.load('./../data/training_data.pkl', allow_pickle=True))
+    # testing_dataset = torch.from_numpy(np.load('./../data/testing_data.pkl', allow_pickle=True))
 
     with open(f'./../data/{DATASET_NAME}_data.pkl', 'rb') as f:
         full_dataset = pickle.load(f)
@@ -192,23 +184,21 @@ def train_and_test():
 
 
 def test_last_epoch():
-    """
     with open(f'./../data/{DATASET_NAME}_data.pkl', 'rb') as f:
         full_dataset = pickle.load(f)
 
     testing_dataset = full_dataset[1]
-    """
 
-    testing_dataset = torch.from_numpy(np.load('testing_data.pkl', allow_pickle=True))
+    # testing_dataset = torch.from_numpy(np.load('./../data/testing_data.pkl', allow_pickle=True))
 
     epoch = 4
 
     model = NeRF(hidden_dim=256).to(device)
 
-    model.load_state_dict(torch.load(f'./../checkpoints/{DATASET_NAME}_e{epoch}.pt'))
+    model.load_state_dict(torch.load(f'./../checkpoints/{DATASET_NAME}/e{epoch}.pt'))
     # model.eval()
 
-    for img_index in range(200):
+    for img_index in range(DATASET_TEST_SIZE[DATASET_NAME]):
         test(model, hn=2, hf=6, dataset=testing_dataset, epoch=epoch, img_index=img_index, nb_bins=192,
              height=DATASET_SIZE_DICT[DATASET_NAME][1], width=DATASET_SIZE_DICT[DATASET_NAME][0])
 
@@ -217,6 +207,6 @@ device = 'cuda'
 
 run_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-train_and_test()
+# train_and_test()
 
-# test_last_epoch()
+test_last_epoch()
