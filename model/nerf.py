@@ -1,5 +1,6 @@
 import os
 import pickle
+import json
 from datetime import datetime
 import numpy as np
 from tqdm import tqdm
@@ -8,7 +9,17 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from PIL import Image
 
-from config import DATASET_NAME, DATASET_SIZE_DICT, DATASET_TEST_SIZE, TRAINING_ACCELERATION, DATASET_EPOCHS, DATASET_MILESTONES
+from config import (DATASET_NAME,
+                    DATASET_SIZE_DICT,
+                    DATASET_TEST_SIZE,
+                    TRAINING_ACCELERATION,
+                    DATASET_EPOCHS,
+                    DATASET_MILESTONES)
+
+from utils.metrics import (compute_rmse,
+                           compute_psnr,
+                           compute_ssim,
+                           compute_lpips)
 
 
 class NeRF(nn.Module):
@@ -150,11 +161,36 @@ def test(nerf_model, hn, hf, dataset, chunk_size=10, epoch=0, img_index=0, nb_bi
         regenerated_px_values = render_rays(nerf_model, ray_origins_, ray_directions_, hn=hn, hf=hf, nb_bins=nb_bins)
         data.append(regenerated_px_values)
 
+    # Save the image
+
     img = torch.cat(data).data.cpu().numpy().reshape(height, width, 3)
 
     img_dir = os.path.join(f'./../results/{DATASET_NAME}', run_date)
+    img_path = os.path.join(img_dir, f'e{epoch}_img{img_index}.png')
     os.makedirs(img_dir, exist_ok=True)
-    Image.fromarray((img * 255).astype(np.uint8)).save(os.path.join(img_dir, f'e{epoch}_img{img_index}.png'))
+    Image.fromarray((img * 255).astype(np.uint8)).save(img_path)
+
+    # Save the metrics
+
+    target_paths = {
+        'blender': f'./../data/nerf_synthetic/lego/test/r_{img_index}.png',
+        'llff': f'./../data/nerf_llff_data/fern/images_8/image{img_index:03d}.png'
+    }
+
+    prediction = np.array(Image.open(img_path))
+    target = np.array(Image.open(target_paths[DATASET_NAME]))
+
+    metrics = {
+        'rmse': compute_rmse(prediction, target),
+        'psnr': compute_psnr(prediction, target),
+        'ssim': compute_ssim(prediction, target),
+        'lpips': compute_lpips(prediction, target)
+    }
+
+    metrics_path = os.path.join(img_dir, f'e{epoch}_metrics{img_index}.json')
+
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f)
 
 
 def train_and_test():
