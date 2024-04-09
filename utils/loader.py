@@ -2,15 +2,15 @@ import torch
 from tqdm import tqdm
 
 from datasets import dataset_dict
-from config import DATASET_NAME, DATASET_SIZE_DICT
+from config import DATASET_NAME, DATASET_TYPE, DATASET_SIZE_DICT
 
 
 def load_data(split='train'):
     if DATASET_NAME not in dataset_dict.keys():
         raise Exception('Invalid dataset name')
 
-    dir_dict = {'blender': './../data/nerf_synthetic/lego',
-                'llff': './../data/nerf_llff_data/fern'}
+    dir_dict = {'blender': f'./../data/nerf_synthetic/{DATASET_TYPE}',
+                'llff': f'./../data/nerf_llff_data/{DATASET_TYPE}'}
 
     kwargs = {'root_dir': dir_dict[DATASET_NAME],
               'split': split,

@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from PIL import Image
 
 from config import (DATASET_NAME,
+                    DATASET_TYPE,
                     DATASET_SIZE_DICT,
                     DATASET_TEST_SIZE,
                     TRAINING_ACCELERATION,
@@ -137,10 +138,10 @@ def train(nerf_model, optimizer, scheduler, loader, testing_dataset, dev='cpu', 
 
         scheduler.step()
 
-        torch.save(nerf_model.state_dict(), f'./../checkpoints/e{i}.pt')
+        torch.save(nerf_model.state_dict(), f'./../checkpoints/{DATASET_NAME}/{DATASET_TYPE}/e{i}.pt')
         print('Saved checkpoint')
 
-        for img_index in range(DATASET_TEST_SIZE[DATASET_NAME]):
+        for img_index in range(DATASET_TEST_SIZE[DATASET_NAME][DATASET_TYPE]):
             test(nerf_model, hn, hf, testing_dataset, epoch=i, img_index=img_index, nb_bins=nb_bins,
                  height=height, width=width)
 
@@ -174,7 +175,7 @@ def test(nerf_model, hn, hf, dataset, chunk_size=10, epoch=0, img_index=0, nb_bi
 
     target_paths = {
         'blender': f'./../data/nerf_synthetic/lego/test/r_{img_index}.png',
-        'llff': f'./../data/nerf_llff_data/fern/images_8/image{img_index:03d}.png'
+        'llff': f'./../data/nerf_llff_data/{DATASET_TYPE}/images_8/image{img_index:03d}.png'
     }
 
     prediction = np.array(Image.open(img_path))
@@ -184,7 +185,7 @@ def test(nerf_model, hn, hf, dataset, chunk_size=10, epoch=0, img_index=0, nb_bi
         'rmse': compute_rmse(prediction, target),
         'psnr': compute_psnr(prediction, target),
         'ssim': compute_ssim(prediction, target),
-        'lpips': compute_lpips(prediction, target)
+        # 'lpips': compute_lpips(prediction, target)
     }
 
     metrics_path = os.path.join(img_dir, f'e{epoch}_metrics{img_index}.json')
@@ -197,7 +198,7 @@ def train_and_test():
     # training_dataset = torch.from_numpy(np.load('./../data/training_data.pkl', allow_pickle=True))
     # testing_dataset = torch.from_numpy(np.load('./../data/testing_data.pkl', allow_pickle=True))
 
-    with open(f'./../data/{DATASET_NAME}_data.pkl', 'rb') as f:
+    with open(f'./../data/{DATASET_NAME}_{DATASET_TYPE}_data.pkl', 'rb') as f:
         full_dataset = pickle.load(f)
 
     training_dataset = full_dataset[0]
@@ -224,7 +225,7 @@ def train_and_test():
 
 
 def test_last_epoch():
-    with open(f'./../data/{DATASET_NAME}_data.pkl', 'rb') as f:
+    with open(f'./../data/{DATASET_NAME}_{DATASET_TYPE}_data.pkl', 'rb') as f:
         full_dataset = pickle.load(f)
 
     testing_dataset = full_dataset[1]
@@ -234,14 +235,14 @@ def test_last_epoch():
 
     # testing_dataset = torch.from_numpy(np.load('./../data/testing_data.pkl', allow_pickle=True))
 
-    epoch = 4
+    epoch = 0
 
     model = NeRF(hidden_dim=256).to(device)
 
-    model.load_state_dict(torch.load(f'./../checkpoints/{DATASET_NAME}/e{epoch}.pt'))
+    model.load_state_dict(torch.load(f'./../checkpoints/{DATASET_NAME}/{DATASET_TYPE}/e{epoch}.pt'))
     # model.eval()
 
-    for img_index in range(DATASET_TEST_SIZE[DATASET_NAME]):
+    for img_index in range(DATASET_TEST_SIZE[DATASET_NAME][DATASET_TYPE]):
         test(model, hn=near, hf=far, dataset=testing_dataset, epoch=epoch, img_index=img_index, nb_bins=192,
              height=DATASET_SIZE_DICT[DATASET_NAME][1], width=DATASET_SIZE_DICT[DATASET_NAME][0])
 
