@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from tqdm import tqdm
 
 from datasets import dataset_dict
@@ -42,3 +43,21 @@ def load_data(split='train'):
             out_set[flatten_start:flatten_end] = test_image['rays'][:, :6]
 
     return out_set, dataset[0]['near'], dataset[0]['far']
+
+
+def compute_bounding_box(rays, near, far):
+    origins = rays[:, :3]
+    directions = rays[:, 3:]
+
+    near_intersections = (near - origins[:, 2]) / directions[:, 2]
+    far_intersections = (far - origins[:, 2]) / directions[:, 2]
+
+    intersection_points_near = origins + near_intersections[:, np.newaxis] * directions
+    intersection_points_far = origins + far_intersections[:, np.newaxis] * directions
+
+    all_intersection_points = np.concatenate([intersection_points_near, intersection_points_far], axis=0)
+
+    min_corner = np.min(all_intersection_points, axis=0)
+    max_corner = np.max(all_intersection_points, axis=0)
+
+    return min_corner, max_corner

@@ -6,8 +6,10 @@
   <component name="ChangeListManager">
     <list default="true" id="e83c341d-f48a-436e-aba3-c587e122f42f" name="Changes" comment="support for multiple datasets">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/checkpoints/blender/lego/e0.pt" beforeDir="false" afterPath="$PROJECT_DIR$/checkpoints/blender/lego/e0.pt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/model/derf.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/derf.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/nerf.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/nerf.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/loader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/pickler.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/pickler.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,7 +66,7 @@
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "git-widget-placeholder": "main",
     "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "C:/Users/siava/OneDrive/Documents/GitHub/nerf-pytorch",
+    "last_opened_file_path": "C:/Users/siava/OneDrive/Documents/GitHub/DeRF-pytorch",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -103,7 +105,7 @@
       <workItem from="1712159549008" duration="504000" />
       <workItem from="1712160066036" duration="15498000" />
       <workItem from="1712242785535" duration="49455000" />
-      <workItem from="1712694020094" duration="9305000" />
+      <workItem from="1712694020094" duration="11382000" />
     </task>
     <task id="LOCAL-00001" summary="support for multiple datasets">
       <option name="closed" value="true" />
