@@ -37,14 +37,14 @@ def training_loop():
 
     print('Training coarse NeRF approximation')
 
-    coarse_nerf = nerf.NeRF(hidden_dim=HIDDEN_UNITS['head']).to(DEVICE)
+    coarse_nerf = nerf.NeRF().to(DEVICE)
     coarse_nerf_optimizer = torch.optim.Adam(coarse_nerf.parameters(), lr=5e-4)
     nerf_data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
-    # nerf_train.train(coarse_nerf, coarse_nerf_optimizer, None, nerf_data_loader,
-    #                  near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), BINS_COARSE)
+    nerf_train.train(coarse_nerf, coarse_nerf_optimizer, None, nerf_data_loader,
+                     near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), BINS_COARSE)
 
-    coarse_nerf.load_state_dict(torch.load('./../checkpoints/blender/lego/e0.pt'))
+    # coarse_nerf.load_state_dict(torch.load('./../checkpoints/blender/lego/e0.pt'))
 
     print('Training Voronoi decomposition')
 
