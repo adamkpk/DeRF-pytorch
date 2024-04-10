@@ -119,6 +119,7 @@ def testing_loop():
                  DATASET_SIZE_DICT[DATASET_NAME][1], DATASET_SIZE_DICT[DATASET_NAME][0])
 
 
-run_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-testing_loop()
-print('Testing complete, all images and metrics saved.')
+if __name__ == '__main__':
+    run_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    testing_loop()
+    print('Testing complete, all images and metrics saved.')

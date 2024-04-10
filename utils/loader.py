@@ -46,16 +46,13 @@ def load_data(split='train'):
 
 
 def compute_bounding_box(rays, near, far):
-    origins = rays[:, :3]
-    directions = rays[:, 3:]
+    origins = np.array(rays[:, :3])
+    directions = np.array(rays[:, 3:])
 
-    near_intersections = (near - origins[:, 2]) / directions[:, 2]
-    far_intersections = (far - origins[:, 2]) / directions[:, 2]
+    near_intersections = origins + near * directions
+    far_intersections = origins + far * directions
 
-    intersection_points_near = origins + near_intersections[:, np.newaxis] * directions
-    intersection_points_far = origins + far_intersections[:, np.newaxis] * directions
-
-    all_intersection_points = np.concatenate([intersection_points_near, intersection_points_far], axis=0)
+    all_intersection_points = np.concatenate([near_intersections, far_intersections], axis=0)
 
     min_corner = np.min(all_intersection_points, axis=0)
     max_corner = np.max(all_intersection_points, axis=0)

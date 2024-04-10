@@ -33,9 +33,10 @@ def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins):
             optimizer.step()
             training_loss.append(loss.item())
 
-        scheduler.step()
+        if scheduler is not None:
+            scheduler.step()
 
-        checkpoint_dir = f'./../checkpoints/{DATASET_NAME}/{DATASET_TYPE}'
+        checkpoint_dir = f'./../checkpoints/{DATASET_NAME}/{DATASET_TYPE}'  # turn back from coarse
         checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
         os.makedirs(checkpoint_dir, exist_ok=True)
         torch.save(model.state_dict(), checkpoint_path)
@@ -65,5 +66,6 @@ def training_loop():
           near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), BINS_FINE)
 
 
-training_loop()
-print('Training complete, all epochs saved.')
+if __name__ == '__main__':
+    training_loop()
+    print('Training complete, all epochs saved.')
