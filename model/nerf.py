@@ -66,7 +66,7 @@ class NeRF(nn.Module):
 #                       accumulated_transmittance[:, :-1]), dim=-1)
 
 
-def render_rays(nerf_model, ray_origins, ray_directions, near, far, bins):
+def render_rays(model, ray_origins, ray_directions, near, far, bins):
     t = torch.linspace(near, far, bins, device=DEVICE).expand(ray_origins.shape[0], bins)
 
     # Perturb sampling along each ray.
@@ -84,7 +84,7 @@ def render_rays(nerf_model, ray_origins, ray_directions, near, far, bins):
     # Expand the ray_directions tensor to match the shape of x
     ray_directions = ray_directions.expand(bins, ray_directions.shape[0], 3).transpose(0, 1)
 
-    colors, sigma = nerf_model(x.reshape(-1, 3), ray_directions.reshape(-1, 3))
+    colors, sigma = model(x.reshape(-1, 3), ray_directions.reshape(-1, 3))
     colors = colors.reshape(x.shape)
     sigma = sigma.reshape(x.shape[:-1])
 
