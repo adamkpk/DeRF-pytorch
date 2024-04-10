@@ -1,5 +1,8 @@
 # TUNING ---------------------------------------------------------------------------------------------------------------
 
+# Options: cpu, cuda   (others not guaranteed)
+DEVICE = 'cuda'
+
 # Options: blender, llff
 DATASET_NAME = 'blender'
 
@@ -9,7 +12,13 @@ DATASET_TYPE = 'lego'
 # Options: 1, 2
 TRAINING_ACCELERATION = 1
 
+# Options: True -> tests all epochs, False -> tests only the last epoch
+TEST_ALL_EPOCHS = False
+
 # CONSTANTS ------------------------------------------------------------------------------------------------------------
+
+BINS_COARSE = 64
+BINS_FINE = 192
 
 DATASET_SIZE_DICT = {
     'blender': tuple([400, 400]),
