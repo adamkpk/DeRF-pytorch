@@ -11,4 +11,6 @@ from PIL import Image
 
 from nerf import *
 
+
 class DeRF(nn.Module):
+    pass

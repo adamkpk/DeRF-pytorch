@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from PIL import Image
+from scipy import ndimage
 
 from config import (DATASET_NAME,
                     DATASET_TYPE,
@@ -181,11 +182,15 @@ def test(nerf_model, hn, hf, dataset, chunk_size=10, epoch=0, img_index=0, nb_bi
     prediction = np.array(Image.open(img_path))
     target = np.array(Image.open(target_paths[DATASET_NAME]))
 
+    # Blender target images are 800x800x4, need to convert to 400x400x3
+    if DATASET_NAME == 'blender':
+        target = ndimage.zoom(target[..., :3], (0.5, 0.5, 1))
+
     metrics = {
         'rmse': compute_rmse(prediction, target),
         'psnr': compute_psnr(prediction, target),
         'ssim': compute_ssim(prediction, target),
-        # 'lpips': compute_lpips(prediction, target)
+        'lpips': float(compute_lpips(prediction, target)[0][0][0][0])
     }
 
     metrics_path = os.path.join(img_dir, f'e{epoch}_metrics{img_index}.json')

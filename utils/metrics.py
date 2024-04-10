@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from PIL import Image
 from skimage.metrics import structural_similarity
 import lpips
@@ -24,5 +25,13 @@ def compute_ssim(prediction, target):
 
 
 def compute_lpips(prediction, target):
-    loss_fn = lpips.LPIPS(net='alex')
+    # input is numpy arrays in format (width, height, channel)
+    # lpips expects torch tensors in format (batch, channel, width, height)
+
+    prediction = torch.Tensor(prediction).permute(2, 0, 1).unsqueeze(0)
+    target = torch.Tensor(target).permute(2, 0, 1).unsqueeze(0)
+
+    print(prediction.shape, target.shape)
+
+    loss_fn = lpips.LPIPS(net='squeeze')
     return loss_fn.forward(prediction, target)
