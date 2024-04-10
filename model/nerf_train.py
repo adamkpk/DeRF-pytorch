@@ -62,7 +62,7 @@ def training_loop():
     data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
     train(model, model_optimizer, model_scheduler, data_loader,
-          int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), near, far, BINS_FINE)
+          near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), BINS_FINE)
 
 
 training_loop()
