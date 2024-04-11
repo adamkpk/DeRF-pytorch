@@ -106,9 +106,6 @@ def evaluate_rays(model, ray_directions, bins, x, mask=None):
 
 def integrate_ray_color(sigma, delta, colors):
     alpha = 1 - torch.exp(-sigma * delta)  # [batch_size, bins]
-    # weights = compute_accumulated_transmittance(1 - alpha).unsqueeze(2) * alpha.unsqueeze(2)
-
-    # print(torch.min(sigma), torch.max(sigma), torch.mean(sigma))
 
     transmittance = torch.cumprod(1 - alpha, 1)
     transmittance = torch.cat((torch.ones((transmittance.shape[0], 1), device=DEVICE),

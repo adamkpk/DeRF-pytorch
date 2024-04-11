@@ -9,15 +9,11 @@ import matplotlib.pyplot as plt
 
 from config import (DEVICE,
                     BINS_COARSE,
-                    BINS_FINE,
-                    HIDDEN_UNITS,
                     HEAD_COUNT,
                     DATASET_NAME,
                     DATASET_TYPE,
                     TRAINING_ACCELERATION,
-                    DATASET_EPOCHS,
-                    DATASET_MILESTONES,
-                    DATASET_EPOCHS_COARSE)
+                    DATASET_EPOCHS)
 
 from model.nerf import (NeRF,
                         sample_ray_positions,
@@ -116,7 +112,7 @@ def train_derf(model_derf, model_voronoi, data_loader, near, far, epochs, bins):
             x, delta = sample_ray_positions(ray_origins, ray_directions, near, far, bins)
 
             # [batch_size, bins] array of corresponding Voronoi region indices in which each ray sample resides
-            region_indices = torch.from_numpy(partition_samples(x.detach().cpu().numpy(), head_positions))
+            region_indices = torch.from_numpy(partition_samples(x.detach().cpu().numpy(), head_positions)).to(DEVICE)
 
             head_regenerated_px_values = torch.zeros((len(head_positions), batch.shape[0], 3)).to(DEVICE)
 
