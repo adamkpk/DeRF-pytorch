@@ -34,9 +34,7 @@ def compute_lpips(prediction, target):
     prediction = torch.Tensor(prediction).permute(2, 0, 1).unsqueeze(0)
     target = torch.Tensor(target).permute(2, 0, 1).unsqueeze(0)
 
-    print(prediction.shape, target.shape)
-
-    loss_fn = lpips.LPIPS(net='alex')
+    loss_fn = lpips.LPIPS(net='alex', version='0.1')
     return loss_fn.forward(prediction, target)
 
 
@@ -75,3 +73,21 @@ def aggregate_metrics(results_dir, epoch):
 
     with open(metrics_path, "w") as f:
         json.dump(metrics_mean, f)
+
+
+def aggregate_images(results_dir, epoch):
+    results_contents = os.listdir(results_dir)
+
+    images = []
+
+    for result in results_contents:
+        match = re.match(rf'e{epoch}_\d+\.png', result)
+
+        if match is None:
+            continue
+
+        image_path = os.path.join(results_dir, result)
+        images.append(Image.open(image_path))
+
+    gif_path = os.path.join(results_dir, f'e{epoch}_anim.gif')
+    images[0].save(gif_path, save_all=True, append_images=images[1:], duration=int(1000 / 30), loop=0)

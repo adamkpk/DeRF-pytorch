@@ -4,16 +4,16 @@
 DEVICE = 'cuda'
 
 # Options: blender, llff
-DATASET_NAME = 'llff'
+DATASET_NAME = 'blender'
 
 # Options: blender -> lego     llff -> fern, flower
-DATASET_TYPE = 'fern'
+DATASET_TYPE = 'lego'
 
 # Options: 1, 2
 TRAINING_ACCELERATION = 1
 
 # Options: True -> tests all epochs, False -> tests only the last epoch
-TEST_ALL_EPOCHS = True
+TEST_ALL_EPOCHS = False
 
 HEAD_COUNT = 32
 

@@ -21,7 +21,8 @@ from utils.metrics import (compute_rmse,
                            compute_psnr,
                            compute_ssim,
                            compute_lpips,
-                           aggregate_metrics)
+                           aggregate_metrics,
+                           aggregate_images)
 
 from model.nerf import NeRF, render_rays
 
@@ -119,6 +120,7 @@ def testing_loop():
                  DATASET_SIZE_DICT[DATASET_NAME][1], DATASET_SIZE_DICT[DATASET_NAME][0])
 
         aggregate_metrics(results_dir, epoch)
+        aggregate_images(results_dir, epoch)
 
 
 if __name__ == '__main__':
