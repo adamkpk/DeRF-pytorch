@@ -85,7 +85,7 @@ def testing_loop():
     near = full_dataset[2]
     far = full_dataset[3]
 
-    checkpoint_dir = f'./../checkpoints/{DATASET_NAME}/{DATASET_TYPE}'
+    checkpoint_dir = f'./../checkpoints/nerf/{DATASET_NAME}/{DATASET_TYPE}'
     checkpoint_contents = os.listdir(checkpoint_dir)
 
     if not TEST_ALL_EPOCHS:
@@ -125,6 +125,6 @@ def testing_loop():
 
 if __name__ == '__main__':
     run_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    results_dir = os.path.join(f'./../results/{DATASET_NAME}/{DATASET_TYPE}', run_date)
+    results_dir = os.path.join(f'./../results/nerf/{DATASET_NAME}/{DATASET_TYPE}', run_date)
     testing_loop()
     print('Testing complete, all images and metrics saved.')

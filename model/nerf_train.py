@@ -16,7 +16,7 @@ from config import (DEVICE,
 from model.nerf import NeRF, render_rays
 
 
-def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins):
+def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins, model_type='nerf'):
     training_loss = []
 
     for i in range(epochs):
@@ -36,7 +36,7 @@ def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins):
         if scheduler is not None:
             scheduler.step()
 
-        checkpoint_dir = f'./../checkpoints/{DATASET_NAME}/{DATASET_TYPE}'  # turn back from coarse
+        checkpoint_dir = f'./../checkpoints/{model_type}/{DATASET_NAME}/{DATASET_TYPE}'  # turn back from coarse
         checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
         os.makedirs(checkpoint_dir, exist_ok=True)
         torch.save(model.state_dict(), checkpoint_path)

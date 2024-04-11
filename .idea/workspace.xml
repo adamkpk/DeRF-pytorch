@@ -77,11 +77,11 @@
       <recent name="C:\Users\siava\OneDrive\Documents\GitHub\DeRF-pytorch\checkpoints\blender" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\siava\OneDrive\Documents\GitHub\DeRF-pytorch\checkpoints\derf\voronoi\blender\lego" />
+      <recent name="C:\Users\siava\OneDrive\Documents\GitHub\DeRF-pytorch\results\nerf" />
+      <recent name="C:\Users\siava\OneDrive\Documents\GitHub\DeRF-pytorch\checkpoints\nerf" />
+      <recent name="C:\Users\siava\OneDrive\Documents\GitHub\DeRF-pytorch\checkpoints\derf" />
       <recent name="C:\Users\siava\OneDrive\Documents\GitHub\DeRF-pytorch\checkpoints\back" />
-      <recent name="C:\Users\siava\OneDrive\Documents\GitHub\DeRF-pytorch\checkpoints\coarse\blender\lego" />
-      <recent name="C:\Users\siava\OneDrive\Documents\GitHub\DeRF-pytorch\checkpoints" />
-      <recent name="C:\Users\siava\OneDrive\Documents\GitHub\DeRF-pytorch\checkpoints\blender\lego" />
-      <recent name="C:\Users\siava\OneDrive\Documents\GitHub\DeRF-pytorch\checkpoints\llff\fern" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -105,7 +105,7 @@
       <workItem from="1712160066036" duration="15498000" />
       <workItem from="1712242785535" duration="49455000" />
       <workItem from="1712694020094" duration="36072000" />
-      <workItem from="1712845678541" duration="16071000" />
+      <workItem from="1712845678541" duration="16897000" />
     </task>
     <task id="LOCAL-00001" summary="support for multiple datasets">
       <option name="closed" value="true" />
@@ -141,7 +141,7 @@
     <SUITE FILE_PATH="coverage/DeRF_pytorch$poser.coverage" NAME="poser Coverage Results" MODIFIED="1712344386028" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
     <SUITE FILE_PATH="coverage/DeRF_pytorch$metrics.coverage" NAME="metrics Coverage Results" MODIFIED="1712846303023" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
     <SUITE FILE_PATH="coverage/DeRF_pytorch$derf.coverage" NAME="derf Coverage Results" MODIFIED="1712859401334" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/model" />
-    <SUITE FILE_PATH="coverage/DeRF_pytorch$derf_train.coverage" NAME="derf_train Coverage Results" MODIFIED="1712869174376" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/model" />
+    <SUITE FILE_PATH="coverage/DeRF_pytorch$derf_train.coverage" NAME="derf_train Coverage Results" MODIFIED="1712869872558" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/model" />
     <SUITE FILE_PATH="coverage/DeRF_pytorch$train.coverage" NAME="train Coverage Results" MODIFIED="1712163356797" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/run" />
     <SUITE FILE_PATH="coverage/DeRF_pytorch$nerf_test.coverage" NAME="nerf_test Coverage Results" MODIFIED="1712856514682" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/model" />
     <SUITE FILE_PATH="coverage/DeRF_pytorch$dataset.coverage" NAME="dataset Coverage Results" MODIFIED="1712330890632" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />

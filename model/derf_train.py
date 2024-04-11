@@ -79,7 +79,7 @@ def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_
 
             i += 1
 
-        checkpoint_dir = f'./../checkpoints/voronoi'
+        checkpoint_dir = f'./../checkpoints/derf/voronoi/{DATASET_NAME}/{DATASET_TYPE}'
         checkpoint_path = os.path.join(checkpoint_dir, f'e{j}.pt')
         os.makedirs(checkpoint_dir, exist_ok=True)
         torch.save(model_voronoi.state_dict(), checkpoint_path)
@@ -144,7 +144,7 @@ def train_derf(model_derf, model_voronoi, data_loader, near, far, epochs, bins):
         for head in model_derf.heads:
             head['scheduler'].step()
 
-        # checkpoint_dir = f'./../checkpoints/{DATASET_NAME}/{DATASET_TYPE}'
+        # checkpoint_dir = f'./../checkpoints/derf/heads/{DATASET_NAME}/{DATASET_TYPE}'
         # checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
         # os.makedirs(checkpoint_dir, exist_ok=True)
         # torch.save(model_derf.state_dict(), checkpoint_path)
@@ -171,9 +171,9 @@ def training_loop():
     nerf_data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
     # nerf_train.train(model_nerf_coarse, nerf_optimizer, None, nerf_data_loader,
-    #                  near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), BINS_COARSE)
+    #                  near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), BINS_COARSE, 'derf')
 
-    model_nerf_coarse.load_state_dict(torch.load('./../checkpoints/coarse/blender/lego/e0.pt'))
+    model_nerf_coarse.load_state_dict(torch.load(f'./../checkpoints/derf/coarse/{DATASET_NAME}/{DATASET_TYPE}/e0.pt'))
 
     print('Training Voronoi decomposition')
 
@@ -183,7 +183,7 @@ def training_loop():
 
     # train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, model_nerf_coarse, near, far)
 
-    model_voronoi.load_state_dict(torch.load('./../checkpoints/voronoi/e0.pt'))
+    model_voronoi.load_state_dict(torch.load(f'./../checkpoints/derf/voronoi/{DATASET_NAME}/{DATASET_TYPE}/e0.pt'))
 
     print('Training DeRF with learned head positions')
 
