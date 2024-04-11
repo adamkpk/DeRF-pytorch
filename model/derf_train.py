@@ -99,8 +99,6 @@ def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_
 
 
 def train_derf(model_derf, model_voronoi, data_loader, near, far, epochs, bins):
-    training_loss = []
-
     head_positions = model_voronoi.head_positions.detach().cpu().numpy()
 
     for i in range(epochs):
@@ -144,13 +142,11 @@ def train_derf(model_derf, model_voronoi, data_loader, near, far, epochs, bins):
         for head in model_derf.heads:
             head['scheduler'].step()
 
-        # checkpoint_dir = f'./../checkpoints/derf/heads/{DATASET_NAME}/{DATASET_TYPE}'
-        # checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
-        # os.makedirs(checkpoint_dir, exist_ok=True)
-        # torch.save(model_derf.state_dict(), checkpoint_path)
-        # print(f'Saved checkpoint: {checkpoint_path}')
-
-    return training_loss
+        checkpoint_dir = f'./../checkpoints/derf/heads/{DATASET_NAME}/{DATASET_TYPE}'
+        checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        torch.save([head['model'].state_dict() for head in model_derf.heads], checkpoint_path)
+        print(f'Saved checkpoint: {checkpoint_path}')
 
 
 def training_loop():
@@ -191,8 +187,15 @@ def training_loop():
 
     derf_data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
-    train_derf(model_derf, model_voronoi, derf_data_loader, near, far,
-               int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), BINS_COARSE)
+    # train_derf(model_derf, model_voronoi, derf_data_loader, near, far,
+    #            int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), BINS_COARSE)
+
+    train_derf(model_derf, model_voronoi, derf_data_loader, near, far, 1, BINS_COARSE)
+
+    # head_state_dicts = torch.load(f'./../checkpoints/derf/heads/{DATASET_NAME}/{DATASET_TYPE}/e0.pt')
+    #
+    # for head, state_dict in zip(model_derf.heads, head_state_dicts):
+    #     head.load_state_dict(state_dict)
 
 
 if __name__ == '__main__':
