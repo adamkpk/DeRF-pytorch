@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 
-from config import DEVICE, HIDDEN_UNITS
+from config import (DEVICE,
+                    HIDDEN_UNITS,
+                    DATASET_NAME,
+                    DATASET_WHITEBG_EQUALIZATION)
 
 
 class NeRF(nn.Module):
@@ -148,11 +151,12 @@ def integrate_ray_color(sigma, delta, colors):
 
     # Compute the pixel values as a weighted sum of colors along each ray
     c = (weights * colors).sum(dim=1)
-    weight_sum = weights.sum(-1).sum(-1)  # Regularization for white background
 
-    # NOTE: regularization should ONLY happen during blender file rendering
+    if DATASET_WHITEBG_EQUALIZATION[DATASET_NAME]:
+        weight_sum = weights.sum(-1).sum(-1)  # Regularization for white background
+        return c + 1 - weight_sum.unsqueeze(-1)
 
-    return c + 1 - weight_sum.unsqueeze(-1)
+    return c
 
 
 def render_rays(model, ray_origins, ray_directions, near, far, bins):

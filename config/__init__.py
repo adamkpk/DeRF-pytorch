@@ -4,16 +4,16 @@
 DEVICE = 'cuda'
 
 # Options: blender, llff
-DATASET_NAME = 'blender'
+DATASET_NAME = 'llff'
 
 # Options: blender -> lego     llff -> fern, flower
-DATASET_TYPE = 'lego'
+DATASET_TYPE = 'fern'
 
 # Options: 1, 2
 TRAINING_ACCELERATION = 1
 
 # Options: True -> tests all epochs, False -> tests only the last epoch
-TEST_ALL_EPOCHS = False
+TEST_ALL_EPOCHS = True
 
 HEAD_COUNT = 32
 
@@ -56,4 +56,9 @@ DATASET_MILESTONES = {
 DATASET_EPOCHS_COARSE = {
     'blender': 1,
     'llff': 10
+}
+
+DATASET_WHITEBG_EQUALIZATION = {
+    'blender': True,
+    'llff': False
 }

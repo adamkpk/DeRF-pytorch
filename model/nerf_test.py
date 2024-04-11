@@ -20,7 +20,8 @@ from config import (DEVICE,
 from utils.metrics import (compute_rmse,
                            compute_psnr,
                            compute_ssim,
-                           compute_lpips)
+                           compute_lpips,
+                           aggregate_metrics)
 
 from model.nerf import NeRF, render_rays
 
@@ -43,9 +44,8 @@ def test(model, dataset, near, far, epoch, img_index, bins, height, width, chunk
 
     img = torch.cat(data).data.cpu().numpy().reshape(height, width, 3)
 
-    img_dir = os.path.join(f'./../results/{DATASET_NAME}/{DATASET_TYPE}', run_date)
-    img_path = os.path.join(img_dir, f'e{epoch}_img{img_index}.png')
-    os.makedirs(img_dir, exist_ok=True)
+    img_path = os.path.join(results_dir, f'e{epoch}_img{img_index}.png')
+    os.makedirs(results_dir, exist_ok=True)
     Image.fromarray((img * 255).astype(np.uint8)).save(img_path)
 
     # Save the metrics
@@ -69,7 +69,7 @@ def test(model, dataset, near, far, epoch, img_index, bins, height, width, chunk
         'lpips': float(compute_lpips(prediction, target)[0][0][0][0])
     }
 
-    metrics_path = os.path.join(img_dir, f'e{epoch}_metrics{img_index}.json')
+    metrics_path = os.path.join(results_dir, f'e{epoch}_metrics{img_index}.json')
 
     with open(metrics_path, "w") as f:
         json.dump(metrics, f)
@@ -118,8 +118,11 @@ def testing_loop():
             test(model, testing_dataset, near, far, epoch, img_index, BINS_FINE,
                  DATASET_SIZE_DICT[DATASET_NAME][1], DATASET_SIZE_DICT[DATASET_NAME][0])
 
+        aggregate_metrics(results_dir, epoch)
+
 
 if __name__ == '__main__':
     run_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    results_dir = os.path.join(f'./../results/{DATASET_NAME}/{DATASET_TYPE}', run_date)
     testing_loop()
     print('Testing complete, all images and metrics saved.')

@@ -39,6 +39,5 @@ def ray_contributions(sigma, delta, voronoi_weights):
 
     # Compute the pixel values as a sum of densities along each ray
     v = (weights * voronoi_weights).sum(dim=1)
-    # weight_sum = weights.sum(-1).sum(-1)  # Regularization for white background
 
-    return v  # + 1 - weight_sum.unsqueeze(-1)
+    return v

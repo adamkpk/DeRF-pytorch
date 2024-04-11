@@ -44,7 +44,7 @@ def training_loop():
     nerf_train.train(coarse_nerf, coarse_nerf_optimizer, None, nerf_data_loader,
                      near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), BINS_COARSE)
 
-    # coarse_nerf.load_state_dict(torch.load('./../checkpoints/blender/lego/e0.pt'))
+    # coarse_nerf.load_state_dict(torch.load('./../checkpoints/coarse/blender/lego/e0.pt'))
 
     print('Training Voronoi decomposition')
 
@@ -52,15 +52,17 @@ def training_loop():
     voronoi_optimizer = torch.optim.Adam(model_voronoi.parameters(), lr=5e-4)
     voronoi_data_loader = DataLoader(training_dataset, batch_size=16384, shuffle=True)
 
-    hs_org = model_voronoi.heads.detach().cpu().numpy().copy()
+    head_origins = model_voronoi.heads.detach().cpu().numpy().copy()
 
-    epochs = 1
+    voronoi_epochs = 1
 
-    for j in range(epochs):
+    for j in range(voronoi_epochs):
         i = 0
+
         for batch in tqdm(voronoi_data_loader):
             with torch.no_grad():
                 # Coarsely sample density across ALL rays to train voronoi model
+
                 ray_origins = batch[:, :3].to(DEVICE)
                 ray_directions = batch[:, 3:6].to(DEVICE)
 
@@ -72,13 +74,27 @@ def training_loop():
 
             voronoi_weights = model_voronoi(x)
 
-            # print(torch.min(voronoi_weights), torch.max(voronoi_weights))
-
             contributions = ray_contributions(sigma, delta, voronoi_weights)
 
-            # print(torch.min(contributions), torch.max(contributions))
+            with torch.no_grad():
+                """
+                Minimum possible loss for the batch - as discussed in the paper, the norm of the expected value of the
+                ray contrbutions to each head achieves the minimum possible loss when the contributions are uniform
+                across all heads. Since the sum of the expected values of the contributions is constant, a vector with
+                all elements equal to the mean of the mean of the contributions represents the floor of the loss
+                function (i.e. the minimum possible loss per batch). We subtract this from the loss (as subtracting
+                by a constant does not affect gradients) for better loss interpretability.
+                """
+                min_uniform_loss = torch.norm(torch.full_like(contributions[0], float(torch.mean(contributions))))
+                min_uniform_loss.requires_grad = False
 
-            loss = torch.norm(torch.mean(contributions, dim=0))
+                if i % 20 == 0:
+                    # print('min Loss:', min_uniform_loss.item())
+                    # print(torch.full_like(contributions[0], float(torch.mean(contributions))).detach().cpu().numpy())
+                    woo = torch.mean(contributions, dim=0).detach().cpu().numpy()
+                    print(f'Mean: {np.mean(woo)}, Std: {np.std(woo)}')
+
+            loss = torch.norm(torch.mean(contributions, dim=0)) - min_uniform_loss
 
             loss.backward()
             voronoi_optimizer.step()
@@ -88,15 +104,19 @@ def training_loop():
 
             i += 1
 
-    hs = model_voronoi.heads.detach().cpu().numpy()
+    head_news = model_voronoi.heads.detach().cpu().numpy()
+
+    print('Plotting Voronoi decomposition')
 
     mpl.use('TkAgg')
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(hs_org[:, 0], hs_org[:, 1], hs_org[:, 2], c='b', marker='x')
-    ax.scatter(hs[:, 0], hs[:, 1], hs[:, 2], c='r', marker='o')
+    ax.scatter(head_origins[:, 0], head_origins[:, 1], head_origins[:, 2], c='b', marker='x')
+    ax.scatter(head_news[:, 0], head_news[:, 1], head_news[:, 2], c='r', marker='o')
     plt.show()
+
+    print('Training DeRF with learned head positions')
 
 
 if __name__ == '__main__':
