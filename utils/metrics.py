@@ -79,15 +79,20 @@ def aggregate_images(results_dir, epoch):
     results_contents = os.listdir(results_dir)
 
     images = []
+    image_indexes = []
 
     for result in results_contents:
-        match = re.match(rf'e{epoch}_\d+\.png', result)
+        match = re.match(rf'e{epoch}_img(\d+)\.png', result)
 
         if match is None:
             continue
 
+        image_indexes.append(int(match.group(1)))
+
         image_path = os.path.join(results_dir, result)
         images.append(Image.open(image_path))
 
+    images_sorted = [image for _, image in sorted(zip(image_indexes, images))]
+
     gif_path = os.path.join(results_dir, f'e{epoch}_anim.gif')
-    images[0].save(gif_path, save_all=True, append_images=images[1:], duration=int(1000 / 30), loop=0)
+    images_sorted[0].save(gif_path, save_all=True, append_images=images_sorted[1:], duration=int(1000 / 30), loop=0)
