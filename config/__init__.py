@@ -4,10 +4,10 @@
 DEVICE = 'cuda'
 
 # Options: blender, llff
-DATASET_NAME = 'llff'
+DATASET_NAME = 'blender'
 
 # Options: blender -> lego     llff -> fern, flower
-DATASET_TYPE = 'fern'
+DATASET_TYPE = 'lego'
 
 # Options: 1, 2
 TRAINING_ACCELERATION = 1

@@ -19,40 +19,19 @@ from config import (DEVICE,
                     DATASET_MILESTONES,
                     DATASET_EPOCHS_COARSE)
 
-import model.nerf as nerf
-import model.nerf_train as nerf_train
-from model.derf import Voronoi, DeRF, ray_contributions
+from model.nerf import (NeRF,
+                        sample_ray_positions,
+                        evaluate_rays,
+                        integrate_ray_color)
+
+from model.derf import (Voronoi,
+                        DeRF,
+                        ray_contributions,
+                        partition_samples)
 
 
-def training_loop():
-    with open(f'./../data/{DATASET_NAME}_{DATASET_TYPE}_data.pkl', 'rb') as f:
-        full_dataset = pickle.load(f)
-
-    training_dataset = full_dataset[0]
-
-    near = full_dataset[2]
-    far = full_dataset[3]
-
-    bounding_box = full_dataset[4]
-
-    print('Training coarse NeRF approximation')
-
-    coarse_nerf = nerf.NeRF().to(DEVICE)
-    coarse_nerf_optimizer = torch.optim.Adam(coarse_nerf.parameters(), lr=5e-4)
-    nerf_data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
-
-    nerf_train.train(coarse_nerf, coarse_nerf_optimizer, None, nerf_data_loader,
-                     near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), BINS_COARSE)
-
-    # coarse_nerf.load_state_dict(torch.load('./../checkpoints/coarse/blender/lego/e0.pt'))
-
-    print('Training Voronoi decomposition')
-
-    model_voronoi = Voronoi(HEAD_COUNT, bounding_box).to(DEVICE)
-    voronoi_optimizer = torch.optim.Adam(model_voronoi.parameters(), lr=5e-4)
-    voronoi_data_loader = DataLoader(training_dataset, batch_size=16384, shuffle=True)
-
-    head_origins = model_voronoi.heads.detach().cpu().numpy().copy()
+def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_nerf, near, far):
+    head_origins = model_voronoi.head_positions.detach().cpu().numpy().copy()
 
     voronoi_epochs = 1
 
@@ -66,9 +45,9 @@ def training_loop():
                 ray_origins = batch[:, :3].to(DEVICE)
                 ray_directions = batch[:, 3:6].to(DEVICE)
 
-                x, delta = nerf.sample_ray_positions(ray_origins, ray_directions, near, far, BINS_COARSE)
+                x, delta = sample_ray_positions(ray_origins, ray_directions, near, far, BINS_COARSE)
 
-                sigma, _ = nerf.evaluate_rays(coarse_nerf, ray_directions, BINS_COARSE, x)
+                sigma, _ = evaluate_rays(coarse_nerf, ray_directions, BINS_COARSE, x)
 
             # Softmax Voronoi weights along each sampled ray position (coarse/discrete integration)
 
@@ -104,7 +83,13 @@ def training_loop():
 
             i += 1
 
-    head_news = model_voronoi.heads.detach().cpu().numpy()
+        checkpoint_dir = f'./../checkpoints/voronoi'
+        checkpoint_path = os.path.join(checkpoint_dir, f'e{j}.pt')
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        torch.save(model_voronoi.state_dict(), checkpoint_path)
+        print(f'Saved checkpoint: {checkpoint_path}')
+
+    head_news = model_voronoi.head_positions.detach().cpu().numpy()
 
     print('Plotting Voronoi decomposition')
 
@@ -116,7 +101,102 @@ def training_loop():
     ax.scatter(head_news[:, 0], head_news[:, 1], head_news[:, 2], c='r', marker='o')
     plt.show()
 
+
+def train_derf(model_derf, model_voronoi, data_loader, near, far, epochs, bins):
+    training_loss = []
+
+    head_positions = model_voronoi.head_positions.detach().cpu().numpy()
+
+    for i in range(epochs):
+        for batch in tqdm(data_loader):
+            ray_origins = batch[:, :3].to(DEVICE)
+            ray_directions = batch[:, 3:6].to(DEVICE)
+            ground_truth_px_values = batch[:, 6:].to(DEVICE)
+
+            x, delta = sample_ray_positions(ray_origins, ray_directions, near, far, bins)
+
+            # [batch_size, bins] array of corresponding Voronoi region indices in which each ray sample resides
+            region_indices = torch.from_numpy(partition_samples(x.detach().cpu().numpy(), head_positions))
+
+            head_regenerated_px_values = torch.zeros((len(head_positions), batch.shape[0], 3)).to(DEVICE)
+
+            for head_index, head in enumerate(model_derf.heads):
+                region_mask = torch.zeros_like(region_indices).to(DEVICE)
+                region_mask[region_indices == head_index] = 1
+
+                if not torch.any(region_mask):
+                    continue
+
+                # [batch_size, bins], [batch_size, bins, 3]
+                sigma, colors = evaluate_rays(head['model'], ray_directions, bins, x, region_mask)
+
+                # [batch_size, 3]
+                head_regenerated_px_values[head_index] = integrate_ray_color(sigma, delta, colors)
+
+            # worry later, should be using painter's algorithm here but doing this for quick test to see if it trains
+            regenerated_px_values = torch.sum(head_regenerated_px_values, dim=0)
+
+            for head in model_derf.heads:
+                head['optimizer'].zero_grad()
+
+            loss = ((ground_truth_px_values - regenerated_px_values) ** 2).sum()
+            loss.backward()
+
+            for head in model_derf.heads:
+                head['optimizer'].step()
+
+        for head in model_derf.heads:
+            head['scheduler'].step()
+
+        # checkpoint_dir = f'./../checkpoints/{DATASET_NAME}/{DATASET_TYPE}'
+        # checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
+        # os.makedirs(checkpoint_dir, exist_ok=True)
+        # torch.save(model_derf.state_dict(), checkpoint_path)
+        # print(f'Saved checkpoint: {checkpoint_path}')
+
+    return training_loss
+
+
+def training_loop():
+    with open(f'./../data/{DATASET_NAME}_{DATASET_TYPE}_data.pkl', 'rb') as f:
+        full_dataset = pickle.load(f)
+
+    training_dataset = full_dataset[0]
+
+    near = full_dataset[2]
+    far = full_dataset[3]
+
+    bounding_box = full_dataset[4]
+
+    print('Training coarse NeRF approximation')
+
+    model_nerf_coarse = NeRF().to(DEVICE)
+    nerf_optimizer = torch.optim.Adam(model_nerf_coarse.parameters(), lr=5e-4)
+    nerf_data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
+
+    # nerf_train.train(model_nerf_coarse, nerf_optimizer, None, nerf_data_loader,
+    #                  near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), BINS_COARSE)
+
+    model_nerf_coarse.load_state_dict(torch.load('./../checkpoints/coarse/blender/lego/e0.pt'))
+
+    print('Training Voronoi decomposition')
+
+    model_voronoi = Voronoi(HEAD_COUNT, bounding_box).to(DEVICE)
+    voronoi_optimizer = torch.optim.Adam(model_voronoi.parameters(), lr=5e-4)
+    voronoi_data_loader = DataLoader(training_dataset, batch_size=16384, shuffle=True)
+
+    # train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, model_nerf_coarse, near, far)
+
+    model_voronoi.load_state_dict(torch.load('./../checkpoints/voronoi/e0.pt'))
+
     print('Training DeRF with learned head positions')
+
+    model_derf = DeRF(model_voronoi.head_positions)
+
+    derf_data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
+
+    train_derf(model_derf, model_voronoi, derf_data_loader, near, far,
+               int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), BINS_COARSE)
 
 
 if __name__ == '__main__':

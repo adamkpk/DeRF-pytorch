@@ -64,50 +64,6 @@ class NeRF(nn.Module):
         return radiance, sigma
 
 
-# def compute_accumulated_transmittance(alphas):
-#     accumulated_transmittance = torch.cumprod(alphas, 1)
-#     return torch.cat((torch.ones((accumulated_transmittance.shape[0], 1), device=DEVICE),
-#                       accumulated_transmittance[:, :-1]), dim=-1)
-
-
-# def render_rays(model, ray_origins, ray_directions, near, far, bins):
-#     t = torch.linspace(near, far, bins, device=DEVICE).expand(ray_origins.shape[0], bins)
-#
-#     # Perturb sampling along each ray.
-#     mid = (t[:, :-1] + t[:, 1:]) / 2.
-#     lower = torch.cat((t[:, :1], mid), -1)
-#     upper = torch.cat((mid, t[:, -1:]), -1)
-#     u = torch.rand(t.shape, device=DEVICE)
-#     t = lower + (upper - lower) * u  # [batch_size, bins]
-#     delta = torch.cat((t[:, 1:] - t[:, :-1],
-#                        torch.tensor([1e10], device=DEVICE).expand(ray_origins.shape[0], 1)), -1)
-#
-#     # Compute the 3D points along each ray
-#     x = ray_origins.unsqueeze(1) + t.unsqueeze(2) * ray_directions.unsqueeze(1)  # [batch_size, bins, 3]
-#
-#     # Expand the ray_directions tensor to match the shape of x
-#     ray_directions = ray_directions.expand(bins, ray_directions.shape[0], 3).transpose(0, 1)
-#
-#     colors, sigma = model(x.reshape(-1, 3), ray_directions.reshape(-1, 3))
-#     colors = colors.reshape(x.shape)
-#     sigma = sigma.reshape(x.shape[:-1])
-#
-#     alpha = 1 - torch.exp(-sigma * delta)  # [batch_size, bins]
-#     # weights = compute_accumulated_transmittance(1 - alpha).unsqueeze(2) * alpha.unsqueeze(2)
-#
-#     transmittance = torch.cumprod(1 - alpha, 1)
-#     transmittance = torch.cat((torch.ones((transmittance.shape[0], 1), device=DEVICE),
-#                                transmittance[:, :-1]), dim=-1)
-#
-#     weights = transmittance.unsqueeze(2) * alpha.unsqueeze(2)
-#
-#     # Compute the pixel values as a weighted sum of colors along each ray
-#     c = (weights * colors).sum(dim=1)
-#     weight_sum = weights.sum(-1).sum(-1)  # Regularization for white background
-#
-#     return c + 1 - weight_sum.unsqueeze(-1)
-
-
 def sample_ray_positions(ray_origins, ray_directions, near, far, bins):
     t = torch.linspace(near, far, bins, device=DEVICE).expand(ray_origins.shape[0], bins)
 
@@ -126,13 +82,24 @@ def sample_ray_positions(ray_origins, ray_directions, near, far, bins):
     return x, delta
 
 
-def evaluate_rays(model, ray_directions, bins, x):
-    # Expand the ray_directions tensor to match the shape of x
+def evaluate_rays(model, ray_directions, bins, x, mask=None):
+    # Expand the ray_directions tensor to match the shape of x: [batch_size, bins, 3]
     ray_directions = ray_directions.expand(bins, ray_directions.shape[0], 3).transpose(0, 1)
 
-    colors, sigma = model(x.reshape(-1, 3), ray_directions.reshape(-1, 3))
-    colors = colors.reshape(x.shape)
-    sigma = sigma.reshape(x.shape[:-1])
+    if mask is not None:
+        # Only feed entries that pass through the mask to the model
+        masked_colors, masked_sigma = model(x[mask == 1], ray_directions[mask == 1])
+
+        # Fill dropped components with 0
+        colors = torch.zeros((ray_directions.shape[0], bins, 3)).to(DEVICE)
+        colors[mask == 1] = masked_colors
+        sigma = torch.zeros((ray_directions.shape[0], bins)).to(DEVICE)
+        sigma[mask == 1] = masked_sigma
+
+    else:
+        colors, sigma = model(x.reshape(-1, 3), ray_directions.reshape(-1, 3))
+        colors = colors.reshape(x.shape)
+        sigma = sigma.reshape(x.shape[:-1])
 
     return sigma, colors
 

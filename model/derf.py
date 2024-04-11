@@ -1,7 +1,13 @@
+import numpy as np
 import torch
 import torch.nn as nn
+from scipy.spatial import cKDTree
 
-from config import DEVICE
+from config import (DEVICE,
+                    HIDDEN_UNITS,
+                    DATASET_NAME,
+                    DATASET_MILESTONES,
+                    TRAINING_ACCELERATION)
 
 from nerf import NeRF
 
@@ -10,22 +16,30 @@ class Voronoi(nn.Module):
     def __init__(self, head_count, bounding_box):
         super(Voronoi, self).__init__()
 
-        self.heads = nn.Parameter(torch.rand(head_count, 3)
-                                  * (bounding_box[1] - bounding_box[0]) + bounding_box[0])
+        self.head_positions = nn.Parameter(torch.rand(head_count, 3)
+                                           * (bounding_box[1] - bounding_box[0]) + bounding_box[0])
 
         self.softmax_scale = nn.Parameter(torch.tensor(1.0), requires_grad=False)
 
     def forward(self, positions):
-        d = torch.norm(positions.unsqueeze(-2) - self.heads, dim=-1)
+        d = torch.norm(positions.unsqueeze(-2) - self.head_positions, dim=-1)
         return nn.functional.softmax(-self.softmax_scale * d, dim=-1)
 
 
-class DeRF(nn.Module):
-    def __init__(self, heads, ):
-        super(DeRF, self).__init__()
+class DeRF:
+    def __init__(self, head_positions):
+        self.head_positions = head_positions
 
-    def forward(self):
-        pass
+        self.heads = []
+
+        for _ in range(len(head_positions)):
+            model = NeRF(hidden_dim=HIDDEN_UNITS['head']).to(DEVICE)
+            model_optimizer = torch.optim.Adam(model.parameters(), lr=5e-4 * TRAINING_ACCELERATION)
+            model_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                model_optimizer, milestones=np.array(DATASET_MILESTONES[DATASET_NAME]) / TRAINING_ACCELERATION,
+                gamma=0.5)
+
+            self.heads.append({'model': model, 'optimizer': model_optimizer, 'scheduler': model_scheduler})
 
 
 def ray_contributions(sigma, delta, voronoi_weights):
@@ -41,3 +55,13 @@ def ray_contributions(sigma, delta, voronoi_weights):
     v = (weights * voronoi_weights).sum(dim=1)
 
     return v
+
+
+# Takes a batch of [batch_size, bins, 3] ray samples, returns the nearest Voronoi patch indexes to each sample per ray
+# This KDTree implementation is much shorter than the Delaunay implementation, but is theoretically slower
+def partition_samples(batch, cell_origins):
+    kd = cKDTree(cell_origins)
+
+    _, nearests = kd.query(batch, k=1)
+
+    return nearests
