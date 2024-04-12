@@ -4,7 +4,6 @@ import numpy as np
 from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from config import (DEVICE,
@@ -28,12 +27,17 @@ from model.derf import (Voronoi,
 
 
 def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_nerf, near, far):
+    checkpoint_dir = f'./../checkpoints/derf/voronoi/{DATASET_NAME}/{DATASET_TYPE}'
+
     head_origins = model_voronoi.head_positions.detach().cpu().numpy().copy()
 
     voronoi_epochs = 1
 
     for j in range(voronoi_epochs):
-        i = 0
+        iters = 0
+        total_iters = len(voronoi_data_loader)
+
+        epoch_losses = []
 
         for batch in tqdm(voronoi_data_loader):
             with torch.no_grad():
@@ -64,39 +68,57 @@ def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_
                 min_uniform_loss = torch.norm(torch.full_like(contributions[0], float(torch.mean(contributions))))
                 min_uniform_loss.requires_grad = False
 
-                if i % 20 == 0:
+                if iters % 20 == 0:
                     # print('min Loss:', min_uniform_loss.item())
                     # print(torch.full_like(contributions[0], float(torch.mean(contributions))).detach().cpu().numpy())
                     woo = torch.mean(contributions, dim=0).detach().cpu().numpy()
-                    print(f'Mean: {np.mean(woo)}, Std: {np.std(woo)}')
+                    print(f'Mean: {np.mean(woo)}, Std: {np.std(woo)}', end='')
 
             loss = torch.norm(torch.mean(contributions, dim=0)) - min_uniform_loss
+
+            epoch_losses.append(loss.item())
 
             loss.backward()
             voronoi_optimizer.step()
 
-            if i % 20 == 0:
-                print('Loss:', loss.detach().cpu())
+            if iters % 20 == 0:
+                print(', Loss:', loss.item())
 
-            i += 1
+            # Voronoi boundary hardening
+            t = iters / total_iters
+            model_voronoi.softmax_scale = 10 ** (9 * t)
 
-        checkpoint_dir = f'./../checkpoints/derf/voronoi/{DATASET_NAME}/{DATASET_TYPE}'
+            iters += 1
+
         checkpoint_path = os.path.join(checkpoint_dir, f'e{j}.pt')
         os.makedirs(checkpoint_dir, exist_ok=True)
-        torch.save(model_voronoi.state_dict(), checkpoint_path)
+        torch.save({
+            'state_dict': model_voronoi.state_dict(),
+            'head_count': model_voronoi.head_count,
+            'bounding_box': model_voronoi.bounding_box
+        }, checkpoint_path)
         print(f'Saved checkpoint: {checkpoint_path}')
+
+        plt.figure()
+        plt.plot(epoch_losses)
+        plt.title(f'Voronoi partition loss - Epoch {j}')
+        plt.xlabel('Batch')
+        plt.ylabel('Loss')
+        plt.savefig(os.path.join(checkpoint_dir, f'loss_e{j}.png'))
+        plt.close()
+        print(f'Saved summary visualization for epoch {j}.')
 
     head_news = model_voronoi.head_positions.detach().cpu().numpy()
 
-    print('Plotting Voronoi decomposition')
-
-    mpl.use('TkAgg')
-
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(head_origins[:, 0], head_origins[:, 1], head_origins[:, 2], c='b', marker='x')
-    ax.scatter(head_news[:, 0], head_news[:, 1], head_news[:, 2], c='r', marker='o')
-    plt.show()
+    ax.scatter(head_origins[:, 0], head_origins[:, 1], head_origins[:, 2], c='b', marker='x', label='Initial')
+    ax.scatter(head_news[:, 0], head_news[:, 1], head_news[:, 2], c='r', marker='o', label='Learned')
+    plt.title(f'Voronoi partition')
+    plt.legend()
+    plt.savefig(os.path.join(checkpoint_dir, f'voronoi.png'))
+    plt.close()
+    print('Saved Voronoi decomposition')
 
 
 def train_derf(model_derf, model_voronoi, optimizer, scheduler, data_loader, near, far, epochs, bins):
@@ -117,12 +139,12 @@ def train_derf(model_derf, model_voronoi, optimizer, scheduler, data_loader, nea
             x, delta = sample_ray_positions(ray_origins, ray_directions, near, far, bins)
 
             # KDtree solution
-            # # [batch_size, bins] array of corresponding Voronoi region indices in which each ray sample resides
-            # region_indices = torch.from_numpy(partition_samples(x.detach().cpu().numpy(), head_positions)).to(DEVICE)
+            # [batch_size, bins] array of corresponding Voronoi region indices in which each ray sample resides
+            region_indices = torch.from_numpy(partition_samples(x.detach().cpu().numpy(), head_positions)).to(DEVICE)
 
             # Just using voronoi weights and taking maxes works too - slight but not huge speedup from KDtree
             # decomposition_weights = model_voronoi(x)
-            region_indices = torch.argmax(model_voronoi(x), dim=-1)
+            # region_indices = torch.argmax(model_voronoi(x), dim=-1)
 
             sigma = torch.zeros(batch.shape[0], bins).to(DEVICE)
             colors = torch.zeros(batch.shape[0], bins, 3).to(DEVICE)
@@ -165,9 +187,10 @@ def train_derf(model_derf, model_voronoi, optimizer, scheduler, data_loader, nea
         plt.title(f'DeRF reconstruction loss - Epoch {i}')
         plt.xlabel('Batch')
         plt.ylabel('Loss')
-        plt.savefig(os.path.join(checkpoint_dir, f'loss_epoch_{i}.png'))
+        plt.savefig(os.path.join(checkpoint_dir, f'loss_e{i}.png'))
         plt.close()
         print(f'Saved summary visualization for epoch {i}.')
+
 
 def training_loop():
     with open(f'./../data/{DATASET_NAME}_{DATASET_TYPE}_data.pkl', 'rb') as f:
@@ -199,23 +222,20 @@ def training_loop():
 
     # train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, model_nerf_coarse, near, far)
 
-    model_voronoi.load_state_dict(torch.load(f'./../checkpoints/derf/voronoi/{DATASET_NAME}/{DATASET_TYPE}/e0.pt'))
+    model_voronoi.load_state_dict(
+        torch.load(f'./../checkpoints/derf/voronoi/{DATASET_NAME}/{DATASET_TYPE}/e0.pt')['state_dict'])
 
     print('Training DeRF with learned head positions')
 
     model_derf = DeRF(model_voronoi.head_positions)
 
     derf_data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
-
-    # train_derf(model_derf, model_voronoi, derf_data_loader, near, far,
-    #            int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), BINS_COARSE)
-
     derf_optimizer = torch.optim.Adam(model_derf.all_parameters, lr=5e-4 * TRAINING_ACCELERATION)
     derf_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            derf_optimizer, milestones=np.array(DATASET_MILESTONES[DATASET_NAME]) / TRAINING_ACCELERATION,
-            gamma=0.5)
+            derf_optimizer, milestones=np.array(DATASET_MILESTONES[DATASET_NAME]) / TRAINING_ACCELERATION, gamma=0.5)
 
-    train_derf(model_derf, model_voronoi, derf_optimizer, derf_scheduler, derf_data_loader, near, far, 1, NUM_BINS['fine'])
+    train_derf(model_derf, model_voronoi, derf_optimizer, derf_scheduler, derf_data_loader,
+               near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), NUM_BINS['fine'])
 
     # head_state_dicts = torch.load(f'./../checkpoints/derf/heads/{DATASET_NAME}/{DATASET_TYPE}/e0.pt')
     #

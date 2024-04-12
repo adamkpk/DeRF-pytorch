@@ -6,6 +6,7 @@ import torch
 from PIL import Image
 from skimage.metrics import structural_similarity
 import lpips
+from matplotlib import pyplot as plt
 
 
 def compute_rmse(prediction, target):
@@ -41,11 +42,11 @@ def compute_lpips(prediction, target):
 def aggregate_metrics(results_dir, epoch):
     results_contents = os.listdir(results_dir)
 
-    metrics_mean = {
-        'rmse': 0,
-        'psnr': 0,
-        'ssim': 0,
-        'lpips': 0
+    metrics_vals = {
+        'rmse': [],
+        'psnr': [],
+        'ssim': [],
+        'lpips': []
     }
 
     metrics_count = 0
@@ -63,16 +64,34 @@ def aggregate_metrics(results_dir, epoch):
         with open(metrics_path, "r") as f:
             metrics = json.load(f)
 
-            for metric in metrics_mean.keys():
-                metrics_mean[metric] += metrics[metric]
+            for metric in metrics_vals.keys():
+                metrics_vals[metric].append(metrics[metric])
 
-    for metric in metrics_mean.keys():
-        metrics_mean[metric] /= metrics_count
+    metrics_means = {
+        'rmse': 0,
+        'psnr': 0,
+        'ssim': 0,
+        'lpips': 0
+    }
+
+    for metric in metrics_vals.keys():
+        metrics_means[metric] = np.sum(np.array(metrics_vals[metric])) / metrics_count
 
     metrics_path = os.path.join(results_dir, f'e{epoch}_metrics_mean.json')
 
     with open(metrics_path, "w") as f:
-        json.dump(metrics_mean, f)
+        json.dump(metrics_means, f)
+
+    plt.figure()
+    plt.plot(metrics_vals['rmse'], label='rmse')
+    plt.plot(metrics_vals['psnr'], label='psnr')
+    plt.plot(metrics_vals['ssim'], label='ssim')
+    plt.plot(metrics_vals['lpips'], label='lpips')
+    plt.title(f'Metrics - Epoch {epoch}')
+    plt.legend()
+    plt.savefig(os.path.join(results_dir, f'e{epoch}_metrics_mean.png'))
+    plt.close()
+    print(f'Saved mean visualization for epoch {epoch}.')
 
 
 def aggregate_images(results_dir, epoch):
@@ -96,3 +115,52 @@ def aggregate_images(results_dir, epoch):
 
     gif_path = os.path.join(results_dir, f'e{epoch}_anim.gif')
     images_sorted[0].save(gif_path, save_all=True, append_images=images_sorted[1:], duration=int(1000 / 30), loop=0)
+
+
+def plot_epochs(results_dir):
+    results_contents = os.listdir(results_dir)
+
+    metrics_means = {
+        'rmse': [],
+        'psnr': [],
+        'ssim': [],
+        'lpips': []
+    }
+
+    metrics_indexes = []
+
+    for result in results_contents:
+        match = re.match(rf'e(\d+)_metrics_mean\.json', result)
+
+        if match is None:
+            continue
+
+        metrics_path = os.path.join(results_dir, result)
+
+        with open(metrics_path, "r") as f:
+            metrics = json.load(f)
+
+            for metric in metrics_means.keys():
+                metrics_means[metric].append(metrics[metric])
+
+            metrics_indexes.append(int(match.group(1)))
+
+    # metrics_sorted = [metrics for _, metrics in sorted(zip(metrics_indexes, metrics_means))]
+
+    metrics_sorted = {}
+
+    for metric in metrics_means.keys():
+        metrics_sorted[metric] = [metrics for _, metrics in sorted(zip(metrics_indexes, metrics_means[metric]))]
+
+    plt.figure()
+    plt.plot(metrics_sorted['rmse'], label='rmse')
+    plt.plot(metrics_sorted['psnr'], label='psnr')
+    plt.plot(metrics_sorted['ssim'], label='ssim')
+    plt.plot(metrics_sorted['lpips'], label='lpips')
+    plt.title(f'Metrics Means')
+    plt.legend()
+    plt.xlabel('Epoch')
+    plt.ylabel('Mean')
+    plt.savefig(os.path.join(results_dir, f'all_metrics_mean.png'))
+    plt.close()
+    print(f'Saved mean visualization for all epochs.')

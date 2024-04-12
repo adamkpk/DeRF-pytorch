@@ -15,7 +15,7 @@ TRAINING_ACCELERATION = 1
 # Options: True -> tests all epochs, False -> tests only the last epoch
 TEST_ALL_EPOCHS = False
 
-HEAD_COUNT = 32
+HEAD_COUNT = 8
 
 # CONSTANTS ------------------------------------------------------------------------------------------------------------
 
@@ -63,4 +63,14 @@ DATASET_EPOCHS_COARSE = {
 DATASET_WHITEBG_EQUALIZATION = {
     'blender': True,
     'llff': False
+}
+
+SUMMARY_VIEW = {
+    'blender': {
+        'lego': 39
+    },
+    'llff': {
+        'fern': 0,
+        'flower': 0
+    }
 }

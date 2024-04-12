@@ -55,10 +55,9 @@ def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins, mod
         plt.title(f'NeRF reconstruction loss - Epoch {i}')
         plt.xlabel('Batch')
         plt.ylabel('Loss')
-        plt.savefig(os.path.join(checkpoint_dir, f'loss_epoch_{i}.png'))
+        plt.savefig(os.path.join(checkpoint_dir, f'loss_e{i}.png'))
         plt.close()
         print(f'Saved summary visualization for epoch {i}.')
-
 
 
 def training_loop():
@@ -70,7 +69,7 @@ def training_loop():
     near = full_dataset[2]
     far = full_dataset[3]
 
-    model = NeRF(hidden_dim=128).to(DEVICE)
+    model = NeRF().to(DEVICE)
 
     model_optimizer = torch.optim.Adam(model.parameters(), lr=5e-4 * TRAINING_ACCELERATION)
     model_scheduler = torch.optim.lr_scheduler.MultiStepLR(
