@@ -43,7 +43,7 @@ def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins, mod
         if scheduler is not None:
             scheduler.step()
 
-        checkpoint_dir = f'./../checkpoints/wow/{model_type}/{DATASET_NAME}/{DATASET_TYPE}'  # turn back from coarse
+        checkpoint_dir = f'./../checkpoints/{model_type}/{DATASET_NAME}/{DATASET_TYPE}'  # turn back from coarse
         checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
         os.makedirs(checkpoint_dir, exist_ok=True)
         torch.save(model.state_dict(), checkpoint_path)
@@ -70,7 +70,7 @@ def training_loop():
     near = full_dataset[2]
     far = full_dataset[3]
 
-    model = NeRF().to(DEVICE)
+    model = NeRF(hidden_dim=128).to(DEVICE)
 
     model_optimizer = torch.optim.Adam(model.parameters(), lr=5e-4 * TRAINING_ACCELERATION)
     model_scheduler = torch.optim.lr_scheduler.MultiStepLR(
@@ -79,7 +79,7 @@ def training_loop():
     data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
     train(model, model_optimizer, model_scheduler, data_loader,
-          near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), NUM_BINS['coarse'])
+          near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), NUM_BINS['fine'])
 
 
 if __name__ == '__main__':

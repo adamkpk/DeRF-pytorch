@@ -122,7 +122,7 @@ def train_derf(model_derf, model_voronoi, optimizer, scheduler, data_loader, nea
 
             # Just using voronoi weights and taking maxes works too - slight but not huge speedup from KDtree
             # decomposition_weights = model_voronoi(x)
-            _, region_indices = torch.max(model_voronoi(x), dim=-1)
+            region_indices = torch.argmax(model_voronoi(x), dim=-1)
 
             sigma = torch.zeros(batch.shape[0], bins).to(DEVICE)
             colors = torch.zeros(batch.shape[0], bins, 3).to(DEVICE)
@@ -215,7 +215,7 @@ def training_loop():
             derf_optimizer, milestones=np.array(DATASET_MILESTONES[DATASET_NAME]) / TRAINING_ACCELERATION,
             gamma=0.5)
 
-    train_derf(model_derf, model_voronoi, derf_optimizer, derf_scheduler, derf_data_loader, near, far, 1, NUM_BINS['coarse'])
+    train_derf(model_derf, model_voronoi, derf_optimizer, derf_scheduler, derf_data_loader, near, far, 1, NUM_BINS['fine'])
 
     # head_state_dicts = torch.load(f'./../checkpoints/derf/heads/{DATASET_NAME}/{DATASET_TYPE}/e0.pt')
     #
