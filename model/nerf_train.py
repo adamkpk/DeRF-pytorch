@@ -4,9 +4,10 @@ import numpy as np
 from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
 
 from config import (DEVICE,
-                    BINS_FINE,
+                    NUM_BINS,
                     DATASET_NAME,
                     DATASET_TYPE,
                     TRAINING_ACCELERATION,
@@ -17,7 +18,10 @@ from model.nerf import NeRF, render_rays
 
 
 def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins, model_type='nerf'):
+    iters = 0
     for i in range(epochs):
+        print(f'Training NeRF. Epoch: {i}')
+        epoch_losses = []  # per-batch losses within epoch
         for batch in tqdm(data_loader):
             ray_origins = batch[:, :3].to(DEVICE)
             ray_directions = batch[:, 3:6].to(DEVICE)
@@ -26,18 +30,35 @@ def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins, mod
             regenerated_px_values = render_rays(model, ray_origins, ray_directions, near, far, bins)
             loss = ((ground_truth_px_values - regenerated_px_values) ** 2).sum()
 
+            epoch_losses.append(loss.item())
+            if iters % 100 == 0:
+                print(f'\tIteration: {iters}    Loss: {loss.item():.6f} ')
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
+            iters += 1
+
         if scheduler is not None:
             scheduler.step()
 
-        checkpoint_dir = f'./../checkpoints/{model_type}/{DATASET_NAME}/{DATASET_TYPE}'  # turn back from coarse
+        checkpoint_dir = f'./../checkpoints/wow/{model_type}/{DATASET_NAME}/{DATASET_TYPE}'  # turn back from coarse
         checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
         os.makedirs(checkpoint_dir, exist_ok=True)
         torch.save(model.state_dict(), checkpoint_path)
         print(f'Saved checkpoint: {checkpoint_path}')
+
+        # plot and save loss graph for this epoch
+        plt.figure()
+        plt.plot(epoch_losses)
+        plt.title(f'NeRF reconstruction loss - Epoch {i}')
+        plt.xlabel('Batch')
+        plt.ylabel('Loss')
+        plt.savefig(os.path.join(checkpoint_dir, f'loss_epoch_{i}.png'))
+        plt.close()
+        print(f'Saved summary visualization for epoch {i}.')
+
 
 
 def training_loop():
@@ -58,9 +79,9 @@ def training_loop():
     data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
     train(model, model_optimizer, model_scheduler, data_loader,
-          near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), BINS_FINE)
+          near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), NUM_BINS['coarse'])
 
 
 if __name__ == '__main__':
     training_loop()
-    print('Training complete, all epochs saved.')
+    print('Training complete, checkpoints and summary visualizations for all epochs saved.')

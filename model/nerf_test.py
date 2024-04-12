@@ -11,7 +11,7 @@ from scipy import ndimage
 
 from config import (DEVICE,
                     TEST_ALL_EPOCHS,
-                    BINS_FINE,
+                    NUM_BINS,
                     DATASET_NAME,
                     DATASET_TYPE,
                     DATASET_SIZE_DICT,
@@ -116,7 +116,7 @@ def testing_loop():
         epoch = int(match.group(1)) if match else -1
 
         for img_index in range(DATASET_TEST_SIZE[DATASET_NAME][DATASET_TYPE]):
-            test(model, testing_dataset, near, far, epoch, img_index, BINS_FINE,
+            test(model, testing_dataset, near, far, epoch, img_index, NUM_BINS['fine'],
                  DATASET_SIZE_DICT[DATASET_NAME][1], DATASET_SIZE_DICT[DATASET_NAME][0])
 
         aggregate_metrics(results_dir, epoch)

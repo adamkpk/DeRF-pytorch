@@ -19,12 +19,14 @@ HEAD_COUNT = 32
 
 # CONSTANTS ------------------------------------------------------------------------------------------------------------
 
-BINS_COARSE = 64
-BINS_FINE = 192
+NUM_BINS = {
+    'coarse': 64,
+    'fine': 192
+}
 
 HIDDEN_UNITS = {
     'full': 256,
-    'head': 64
+    'head': 128
 }
 
 DATASET_SIZE_DICT = {
