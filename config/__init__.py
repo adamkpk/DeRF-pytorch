@@ -7,7 +7,7 @@ DEVICE = 'cuda'
 DATASET_NAME = 'blender'
 
 # Options: blender -> lego, drums, ship    llff -> fern, flower
-DATASET_TYPE = 'drums'
+DATASET_TYPE = 'lego'
 
 # Options: 1, 2
 TRAINING_ACCELERATION = 1
@@ -54,11 +54,6 @@ DATASET_EPOCHS = {
     'llff': 30
 }
 
-DATASET_EPOCHS_COARSE = {
-    'blender': 2,
-    'llff': 5
-}
-
 DATASET_MILESTONES = {
     'blender': [2, 4, 8],
     'llff': [10, 20]
@@ -67,7 +62,7 @@ DATASET_MILESTONES = {
 # Note: No scheduler is used when coarse training, so no milestones are defined for coarse
 DATASET_EPOCHS_COARSE = {
     'blender': 1,
-    'llff': 10
+    'llff': 2
 }
 
 DATASET_WHITEBG_EQUALIZATION = {

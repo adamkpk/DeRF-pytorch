@@ -1,4 +1,6 @@
 import os
+import time
+import json
 import pickle
 import numpy as np
 from tqdm import tqdm
@@ -34,12 +36,14 @@ def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_
     head_origins = model_voronoi.head_positions.detach().cpu().numpy().copy()
 
     voronoi_epochs = 1
+    epoch_execution_times = {'dataset_size': len(voronoi_data_loader) * voronoi_data_loader.batch_size}
 
     for j in range(voronoi_epochs):
         iters = 0
         total_iters = len(voronoi_data_loader)
 
         epoch_losses = []
+        epoch_start_time = time.time()
 
         for batch in tqdm(voronoi_data_loader):
             with torch.no_grad():
@@ -85,6 +89,8 @@ def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_
 
             iters += 1
 
+        epoch_execution_times[f'e{j}'] = (time.time() - epoch_start_time) * 1000
+
         checkpoint_path = os.path.join(checkpoint_dir, f'e{j}.pt')
         os.makedirs(checkpoint_dir, exist_ok=True)
         torch.save({
@@ -115,16 +121,24 @@ def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_
     plt.close()
     print('Saved Voronoi decomposition')
 
+    with open(os.path.join(checkpoint_dir, f'epoch_times.json'), "w") as f:
+        json.dump(epoch_execution_times, f)
+
 
 def train_derf(model_derf, model_voronoi, optimizer, scheduler, data_loader, near, far, epochs, bins):
     # Freeze Voronoi model weights for safety / clarity that no further training should take place on it
     for param in model_voronoi.parameters():
         param.requires_grad = False
 
+    checkpoint_dir = f'./../checkpoints/derf/heads/{DATASET_NAME}/{DATASET_TYPE}'
+
     iters = 0
+    epoch_execution_times = {'dataset_size': len(data_loader) * data_loader.batch_size}
+
     for i in range(epochs):
         print(f'Training DeRF {DATASET_TYPE}. Epoch: {i}')
         epoch_losses = []
+        epoch_start_time = time.time()
         for batch in tqdm(data_loader):
             ray_origins = batch[:, :3].to(DEVICE)
             ray_directions = batch[:, 3:6].to(DEVICE)
@@ -165,8 +179,9 @@ def train_derf(model_derf, model_voronoi, optimizer, scheduler, data_loader, nea
 
         scheduler.step()
 
+        epoch_execution_times[f'e{i}'] = (time.time() - epoch_start_time) * 1000
+
         print(f'Saving checkpoint for epoch {i}.')
-        checkpoint_dir = f'./../checkpoints/derf/heads/{DATASET_NAME}/{DATASET_TYPE}'
         checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
         os.makedirs(checkpoint_dir, exist_ok=True)
         torch.save([head.state_dict() for head in model_derf.heads], checkpoint_path)
@@ -180,6 +195,9 @@ def train_derf(model_derf, model_voronoi, optimizer, scheduler, data_loader, nea
         plt.savefig(os.path.join(checkpoint_dir, f'loss_e{i}.png'))
         plt.close()
         print(f'Saved summary visualization for epoch {i}.')
+
+    with open(os.path.join(checkpoint_dir, f'epoch_times.json'), "w") as f:
+        json.dump(epoch_execution_times, f)
 
 
 def training_loop():
@@ -200,11 +218,11 @@ def training_loop():
     nerf_data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
     # Train coarse NeRF
-    # nerf_train.train(model_nerf_coarse, nerf_optimizer, None, nerf_data_loader,
-    #                  near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), NUM_BINS['coarse'], 'derf_coarse')
+    nerf_train.train(model_nerf_coarse, nerf_optimizer, None, nerf_data_loader,
+                     near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), NUM_BINS['coarse'], 'derf_coarse')
 
     # Load coarse NeRF
-    model_nerf_coarse.load_state_dict(torch.load(f'./../checkpoints/derf/coarse/{DATASET_NAME}/{DATASET_TYPE}/e0.pt'))
+    # model_nerf_coarse.load_state_dict(torch.load(f'./../checkpoints/derf/coarse/{DATASET_NAME}/{DATASET_TYPE}/e0.pt'))
 
     print('Training Voronoi decomposition')
 
@@ -215,7 +233,7 @@ def training_loop():
     # Train soft Voronoi model
     train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, model_nerf_coarse, near, far)
 
-    # # Load soft Voronoi model
+    # Load soft Voronoi model
     # model_voronoi.load_state_dict(
     #     torch.load(f'./../checkpoints/derf/voronoi/{DATASET_NAME}/{DATASET_TYPE}/e0.pt')['state_dict'])
 
@@ -237,7 +255,6 @@ def training_loop():
     # Train DeRF
     train_derf(model_derf, model_voronoi, derf_optimizer, derf_scheduler, derf_data_loader,
                near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), NUM_BINS['fine'])
-
 
 
 if __name__ == '__main__':

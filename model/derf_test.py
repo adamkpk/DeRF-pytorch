@@ -1,4 +1,5 @@
 import os
+import time
 import re
 import pickle
 import json
@@ -35,6 +36,8 @@ from model.derf import (Voronoi,
 
 @torch.no_grad()
 def test(model_derf, model_voronoi, dataset, near, far, epoch, img_index, bins, height, width, chunk_size=10):
+    img_start_time = time.time()
+
     ray_origins = dataset[img_index * height * width: (img_index + 1) * height * width, :3]
     ray_directions = dataset[img_index * height * width: (img_index + 1) * height * width, 3:6]
 
@@ -67,6 +70,8 @@ def test(model_derf, model_voronoi, dataset, near, far, epoch, img_index, bins, 
 
         data.append(regenerated_px_values)
 
+    img_exeuction_time = (time.time() - img_start_time) * 1000
+
     # Save the image
 
     img = torch.cat(data).data.cpu().numpy().reshape(height, width, 3)
@@ -90,6 +95,7 @@ def test(model_derf, model_voronoi, dataset, near, far, epoch, img_index, bins, 
         target = ndimage.zoom(target[..., :3], (0.5, 0.5, 1))
 
     metrics = {
+        'time': img_exeuction_time,
         'rmse': compute_rmse(prediction, target),
         'psnr': compute_psnr(prediction, target),
         'ssim': compute_ssim(prediction, target),

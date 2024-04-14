@@ -1,4 +1,5 @@
 import os
+import time
 import re
 import pickle
 import json
@@ -29,6 +30,8 @@ from model.nerf import NeRF, render_rays
 
 @torch.no_grad()
 def test(model, dataset, near, far, epoch, img_index, bins, height, width, chunk_size=10):
+    img_start_time = time.time()
+
     ray_origins = dataset[img_index * height * width: (img_index + 1) * height * width, :3]
     ray_directions = dataset[img_index * height * width: (img_index + 1) * height * width, 3:6]
 
@@ -40,6 +43,8 @@ def test(model, dataset, near, far, epoch, img_index, bins, height, width, chunk
         ray_directions_ = ray_directions[i * width * chunk_size: (i + 1) * width * chunk_size].to(DEVICE)
         regenerated_px_values = render_rays(model, ray_origins_, ray_directions_, near, far, bins)
         data.append(regenerated_px_values)
+
+    img_exeuction_time = (time.time() - img_start_time) * 1000
 
     # Save the image
 
@@ -64,6 +69,7 @@ def test(model, dataset, near, far, epoch, img_index, bins, height, width, chunk
         target = ndimage.zoom(target[..., :3], (0.5, 0.5, 1))
 
     metrics = {
+        'time': img_exeuction_time,
         'rmse': compute_rmse(prediction, target),
         'psnr': compute_psnr(prediction, target),
         'ssim': compute_ssim(prediction, target),

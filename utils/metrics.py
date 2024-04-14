@@ -43,6 +43,7 @@ def aggregate_metrics(results_dir, epoch):
     results_contents = os.listdir(results_dir)
 
     metrics_vals = {
+        'time': [],
         'rmse': [],
         'psnr': [],
         'ssim': [],
@@ -65,9 +66,10 @@ def aggregate_metrics(results_dir, epoch):
             metrics = json.load(f)
 
             for metric in metrics_vals.keys():
-                metrics_vals[metric].append(metrics[metric])
+                metrics_vals[metric].append(metrics.get(metric, 0))
 
     metrics_means = {
+        'time': 0,
         'rmse': 0,
         'psnr': 0,
         'ssim': 0,
@@ -90,6 +92,13 @@ def aggregate_metrics(results_dir, epoch):
     plt.title(f'Metrics - Epoch {epoch}')
     plt.legend()
     plt.savefig(os.path.join(results_dir, f'e{epoch}_metrics_mean.png'))
+    plt.close()
+
+    plt.figure()
+    plt.plot(metrics_vals['time'], label='time')
+    plt.title(f'Times - Epoch {epoch}')
+    plt.legend()
+    plt.savefig(os.path.join(results_dir, f'e{epoch}_time_mean.png'))
     plt.close()
     print(f'Saved mean visualization for epoch {epoch}.')
 
@@ -121,6 +130,7 @@ def plot_epochs(results_dir):
     results_contents = os.listdir(results_dir)
 
     metrics_means = {
+        'time': [],
         'rmse': [],
         'psnr': [],
         'ssim': [],
@@ -162,5 +172,14 @@ def plot_epochs(results_dir):
     plt.xlabel('Epoch')
     plt.ylabel('Mean')
     plt.savefig(os.path.join(results_dir, f'all_metrics_mean.png'))
+    plt.close()
+
+    plt.figure()
+    plt.plot(metrics_sorted['time'], label='time')
+    plt.title(f'Time Means')
+    plt.legend()
+    plt.xlabel('Epoch')
+    plt.ylabel('Mean')
+    plt.savefig(os.path.join(results_dir, f'all_time_mean.png'))
     plt.close()
     print(f'Saved mean visualization for all epochs.')

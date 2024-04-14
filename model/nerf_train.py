@@ -1,4 +1,6 @@
 import os
+import time
+import json
 import pickle
 import numpy as np
 from tqdm import tqdm
@@ -18,10 +20,18 @@ from model.nerf import NeRF, render_rays
 
 
 def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins, model_type='nerf'):
+    if model_type == 'derf_coarse':
+        checkpoint_dir = f'./../checkpoints/derf/coarse/{DATASET_NAME}/{DATASET_TYPE}'
+    else:
+        checkpoint_dir = f'./../checkpoints/{model_type}/{DATASET_NAME}/{DATASET_TYPE}'
+
     iters = 0
+    epoch_execution_times = {'dataset_size': len(data_loader) * data_loader.batch_size}
+
     for i in range(epochs):
         print(f'Training NeRF {DATASET_TYPE}. Epoch: {i}')
         epoch_losses = []  # per-batch losses within epoch
+        epoch_start_time = time.time()
         for batch in tqdm(data_loader):
             ray_origins = batch[:, :3].to(DEVICE)
             ray_directions = batch[:, 3:6].to(DEVICE)
@@ -43,10 +53,8 @@ def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins, mod
         if scheduler is not None:
             scheduler.step()
 
-        if model_type == 'derf_coarse':
-            checkpoint_dir = f'./../checkpoints/derf/coarse/{DATASET_NAME}/{DATASET_TYPE}'
-        else:
-            checkpoint_dir = f'./../checkpoints/{model_type}/{DATASET_NAME}/{DATASET_TYPE}'
+        epoch_execution_times[f'e{i}'] = (time.time() - epoch_start_time) * 1000
+
         checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
         os.makedirs(checkpoint_dir, exist_ok=True)
         torch.save(model.state_dict(), checkpoint_path)
@@ -61,6 +69,9 @@ def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins, mod
         plt.savefig(os.path.join(checkpoint_dir, f'loss_e{i}.png'))
         plt.close()
         print(f'Saved summary visualization for epoch {i}.')
+
+    with open(os.path.join(checkpoint_dir, f'epoch_times.json'), "w") as f:
+        json.dump(epoch_execution_times, f)
 
 
 def training_loop():
@@ -79,6 +90,8 @@ def training_loop():
         model_optimizer, milestones=np.array(DATASET_MILESTONES[DATASET_NAME]) / TRAINING_ACCELERATION, gamma=0.5)
 
     data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
+
+    model.load_state_dict(torch.load(f'./../checkpoints/nerf/{DATASET_NAME}/{DATASET_TYPE}/e29.pt'))
 
     train(model, model_optimizer, model_scheduler, data_loader,
           near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), NUM_BINS['fine'])
