@@ -5,6 +5,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
+import nerf_train
 
 from config import (DEVICE,
                     NUM_BINS,
@@ -13,6 +14,7 @@ from config import (DEVICE,
                     DATASET_TYPE,
                     TRAINING_ACCELERATION,
                     DATASET_EPOCHS,
+                    DATASET_EPOCHS_COARSE,
                     DATASET_MILESTONES)
 
 from model.nerf import (NeRF,
@@ -54,6 +56,7 @@ def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_
 
             voronoi_weights = model_voronoi(x)
 
+            # density-weighted head contributions across each rays in batch (see paper section 3.2 / report)
             contributions = ray_contributions(sigma, delta, voronoi_weights)
 
             with torch.no_grad():
@@ -68,25 +71,17 @@ def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_
                 min_uniform_loss = torch.norm(torch.full_like(contributions[0], float(torch.mean(contributions))))
                 min_uniform_loss.requires_grad = False
 
-                if iters % 20 == 0:
-                    # print('min Loss:', min_uniform_loss.item())
-                    # print(torch.full_like(contributions[0], float(torch.mean(contributions))).detach().cpu().numpy())
-                    woo = torch.mean(contributions, dim=0).detach().cpu().numpy()
-                    print(f'Mean: {np.mean(woo)}, Std: {np.std(woo)}', end='')
+            # mean density-weighted head contributions across all rays in batch
+            W_phi = torch.mean(contributions, dim=0)
 
-            loss = torch.norm(torch.mean(contributions, dim=0)) - min_uniform_loss
-
+            loss = torch.norm(W_phi) - min_uniform_loss
             epoch_losses.append(loss.item())
+
+            if iters % 20 == 0:
+                print(f'Loss: {loss.item():.6f}    Stdev: {np.std(W_phi.detach().cpu().numpy()):.6f}')
 
             loss.backward()
             voronoi_optimizer.step()
-
-            if iters % 20 == 0:
-                print(', Loss:', loss.item())
-
-            # Voronoi boundary hardening
-            t = iters / total_iters
-            model_voronoi.softmax_scale = 10 ** (9 * t)
 
             iters += 1
 
@@ -126,10 +121,9 @@ def train_derf(model_derf, model_voronoi, optimizer, scheduler, data_loader, nea
     for param in model_voronoi.parameters():
         param.requires_grad = False
 
-    head_positions = model_voronoi.head_positions.detach().cpu().numpy()
     iters = 0
     for i in range(epochs):
-        print(f'Training DeRF. Epoch: {i}')
+        print(f'Training DeRF {DATASET_TYPE}. Epoch: {i}')
         epoch_losses = []
         for batch in tqdm(data_loader):
             ray_origins = batch[:, :3].to(DEVICE)
@@ -138,13 +132,9 @@ def train_derf(model_derf, model_voronoi, optimizer, scheduler, data_loader, nea
 
             x, delta = sample_ray_positions(ray_origins, ray_directions, near, far, bins)
 
-            # KDtree solution
-            # [batch_size, bins] array of corresponding Voronoi region indices in which each ray sample resides
-            region_indices = torch.from_numpy(partition_samples(x.detach().cpu().numpy(), head_positions)).to(DEVICE)
-
-            # Just using voronoi weights and taking maxes works too - slight but not huge speedup from KDtree
-            # decomposition_weights = model_voronoi(x)
-            # region_indices = torch.argmax(model_voronoi(x), dim=-1)
+            # get hard Voronoi cell regions via argmax soft forward pass
+            decomposition_weights = model_voronoi(x)
+            region_indices = torch.argmax(decomposition_weights, dim=-1)
 
             sigma = torch.zeros(batch.shape[0], bins).to(DEVICE)
             colors = torch.zeros(batch.shape[0], bins, 3).to(DEVICE)
@@ -209,21 +199,25 @@ def training_loop():
     nerf_optimizer = torch.optim.Adam(model_nerf_coarse.parameters(), lr=5e-4)
     nerf_data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
+    # Train coarse NeRF
     # nerf_train.train(model_nerf_coarse, nerf_optimizer, None, nerf_data_loader,
-    #                  near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), BINS_COARSE, 'derf')
+    #                  near, far, int(DATASET_EPOCHS_COARSE[DATASET_NAME]), NUM_BINS['coarse'], 'derf_coarse')
 
+    # Load coarse NeRF
     model_nerf_coarse.load_state_dict(torch.load(f'./../checkpoints/derf/coarse/{DATASET_NAME}/{DATASET_TYPE}/e0.pt'))
 
     print('Training Voronoi decomposition')
 
     model_voronoi = Voronoi(HEAD_COUNT, bounding_box).to(DEVICE)
-    voronoi_optimizer = torch.optim.Adam(model_voronoi.parameters(), lr=5e-4)
+    voronoi_optimizer = torch.optim.Adam(model_voronoi.parameters(), lr=1e-4)
     voronoi_data_loader = DataLoader(training_dataset, batch_size=16384, shuffle=True)
 
-    # train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, model_nerf_coarse, near, far)
+    # Train soft Voronoi model
+    train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, model_nerf_coarse, near, far)
 
-    model_voronoi.load_state_dict(
-        torch.load(f'./../checkpoints/derf/voronoi/{DATASET_NAME}/{DATASET_TYPE}/e0.pt')['state_dict'])
+    # # Load soft Voronoi model
+    # model_voronoi.load_state_dict(
+    #     torch.load(f'./../checkpoints/derf/voronoi/{DATASET_NAME}/{DATASET_TYPE}/e0.pt')['state_dict'])
 
     print('Training DeRF with learned head positions')
 
@@ -234,13 +228,16 @@ def training_loop():
     derf_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             derf_optimizer, milestones=np.array(DATASET_MILESTONES[DATASET_NAME]) / TRAINING_ACCELERATION, gamma=0.5)
 
-    train_derf(model_derf, model_voronoi, derf_optimizer, derf_scheduler, derf_data_loader,
-               near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), NUM_BINS['fine'])
-
+    # # load DeRF checkpoint
     # head_state_dicts = torch.load(f'./../checkpoints/derf/heads/{DATASET_NAME}/{DATASET_TYPE}/e0.pt')
     #
     # for head, state_dict in zip(model_derf.heads, head_state_dicts):
     #     head.load_state_dict(state_dict)
+
+    # Train DeRF
+    train_derf(model_derf, model_voronoi, derf_optimizer, derf_scheduler, derf_data_loader,
+               near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), NUM_BINS['fine'])
+
 
 
 if __name__ == '__main__':

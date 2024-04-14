@@ -6,8 +6,8 @@ DEVICE = 'cuda'
 # Options: blender, llff
 DATASET_NAME = 'blender'
 
-# Options: blender -> lego     llff -> fern, flower
-DATASET_TYPE = 'lego'
+# Options: blender -> lego, drums, ship    llff -> fern, flower
+DATASET_TYPE = 'drums'
 
 # Options: 1, 2
 TRAINING_ACCELERATION = 1
@@ -17,16 +17,19 @@ TEST_ALL_EPOCHS = False
 
 HEAD_COUNT = 8
 
+# Options: uniform, stratified_uniform, deterministic_grid
+VORONOI_INIT_SCHEME = 'deterministic_grid'
+
 # CONSTANTS ------------------------------------------------------------------------------------------------------------
 
 NUM_BINS = {
     'coarse': 64,
-    'fine': 192
+    'fine': 256
 }
 
 HIDDEN_UNITS = {
     'full': 256,
-    'head': 128
+    'head': 192
 }
 
 DATASET_SIZE_DICT = {
@@ -36,7 +39,9 @@ DATASET_SIZE_DICT = {
 
 DATASET_TEST_SIZE = {
     'blender': {
-        'lego': 200
+        'lego': 200,
+        'drums': 200,
+        'ship': 200
     },
     'llff': {
         'fern': 20,
@@ -47,6 +52,11 @@ DATASET_TEST_SIZE = {
 DATASET_EPOCHS = {
     'blender': 16,
     'llff': 30
+}
+
+DATASET_EPOCHS_COARSE = {
+    'blender': 2,
+    'llff': 5
 }
 
 DATASET_MILESTONES = {

@@ -49,9 +49,7 @@ def test(model_derf, model_voronoi, dataset, near, far, epoch, img_index, bins, 
 
         x, delta = sample_ray_positions(ray_origins_, ray_directions_, near, far, bins)
 
-        # region_indices = torch.argmax(model_voronoi(x), dim=-1)
-
-        region_indices = torch.from_numpy(partition_samples(x.detach().cpu().numpy(), head_positions)).to(DEVICE)
+        region_indices = torch.argmax(model_voronoi(x), dim=-1)
 
         sigma = torch.zeros(ray_origins_.shape[0], bins).to(DEVICE)
         colors = torch.zeros(ray_origins_.shape[0], bins, 3).to(DEVICE)

@@ -20,7 +20,7 @@ from model.nerf import NeRF, render_rays
 def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins, model_type='nerf'):
     iters = 0
     for i in range(epochs):
-        print(f'Training NeRF. Epoch: {i}')
+        print(f'Training NeRF {DATASET_TYPE}. Epoch: {i}')
         epoch_losses = []  # per-batch losses within epoch
         for batch in tqdm(data_loader):
             ray_origins = batch[:, :3].to(DEVICE)
@@ -43,7 +43,10 @@ def train(model, optimizer, scheduler, data_loader, near, far, epochs, bins, mod
         if scheduler is not None:
             scheduler.step()
 
-        checkpoint_dir = f'./../checkpoints/{model_type}/{DATASET_NAME}/{DATASET_TYPE}'  # turn back from coarse
+        if model_type == 'derf_coarse':
+            checkpoint_dir = f'./../checkpoints/derf/coarse/{DATASET_NAME}/{DATASET_TYPE}'
+        else:
+            checkpoint_dir = f'./../checkpoints/{model_type}/{DATASET_NAME}/{DATASET_TYPE}'
         checkpoint_path = os.path.join(checkpoint_dir, f'e{i}.pt')
         os.makedirs(checkpoint_dir, exist_ok=True)
         torch.save(model.state_dict(), checkpoint_path)

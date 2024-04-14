@@ -30,6 +30,23 @@ class NeRF(nn.Module):
         self.embedding_dim_direction = embedding_dim_direction
         self.relu = nn.ReLU()
 
+    """
+    Tested He initialization in an attempt to remedy the DeRF 'vanishing head problem' - 
+    did not seem to fix the issue empirically; might be a numerical issue in the rendering pipeline
+    """
+    #     self._initialize_weights()
+    #
+    # # init weights using He initialization (kaiming_normal_)
+    # def _initialize_weights(self):
+    #     for block in [self.block1, self.block2, self.block3, self.block4]:
+    #         for layer in block:
+    #             if isinstance(layer, nn.Linear):
+    #                 nn.init.kaiming_normal_(layer.weight, mode='fan_out', nonlinearity='relu')
+    #                 if layer.bias is not None:
+    #                     layer.bias.data.fill_(0.01)  # init biases to small val
+
+    # encodes ray origin and directions into a higher dimensional embedding with sinusoidal fns
+    # empirically improves reconstruction of high freq details
     @staticmethod
     def positional_encoding(x, dim):
         out = [x]
@@ -57,14 +74,29 @@ class NeRF(nn.Module):
         h = self.block3(torch.cat((h, emb_d), dim=1))
         # h: [batch_size, hidden_dim // 2]
 
-        radiance = self.block4(h)
+        color = self.block4(h)
         # c: [batch_size, 3]
 
         # radiance, density
-        return radiance, sigma
+        return color, sigma
 
 
 def sample_ray_positions(ray_origins, ray_directions, near, far, bins):
+    """
+    Samples 3D positions along rays from their origins in specified directions.
+
+    Parameters:
+        ray_origins (torch.Tensor): Tensor of shape [batch_size, 3] representing the origins of rays.
+        ray_directions (torch.Tensor): Tensor of shape [batch_size, 3] representing the directions of rays.
+        near (float): Near bound of the ray segment to sample.
+        far (float): Far bound of the ray segment to sample.
+        bins (int): Number of points to sample along each ray.
+
+    Returns:
+        tuple: A tuple containing:
+            - x (torch.Tensor): Sampled points along the rays, shape [batch_size, bins, 3].
+            - delta (torch.Tensor): Distances between consecutive sampled points, shape [batch_size, bins].
+    """
     t = torch.linspace(near, far, bins, device=DEVICE).expand(ray_origins.shape[0], bins)
 
     # Perturb sampling along each ray.
@@ -83,6 +115,21 @@ def sample_ray_positions(ray_origins, ray_directions, near, far, bins):
 
 
 def evaluate_rays(model, ray_directions, bins, x, mask=None):
+    """
+    Evaluates the sampled rays using a NeRF model to determine color and density.
+
+    Parameters:
+        model (nn.Module): The NeRF model used for evaluating points along the rays.
+        ray_directions (torch.Tensor): Tensor of ray directions, shape [batch_size, 3].
+        bins (int): Number of bins used in ray sampling, corresponding to the second dimension of x.
+        x (torch.Tensor): Sampled points along rays, shape [batch_size, bins, 3].
+        mask (torch.Tensor, optional): A binary mask indicating which rays or points to evaluate, shape [batch_size, bins].
+
+    Returns:
+        tuple: A tuple containing:
+            - sigma (torch.Tensor): Estimated densities along the rays, shape [batch_size, bins].
+            - colors (torch.Tensor): Estimated colors at the sampled points, shape [batch_size, bins, 3].
+    """
     # Expand the ray_directions tensor to match the shape of x: [batch_size, bins, 3]
     ray_directions = ray_directions.expand(bins, ray_directions.shape[0], 3).transpose(0, 1)
 
@@ -105,6 +152,18 @@ def evaluate_rays(model, ray_directions, bins, x, mask=None):
 
 
 def integrate_ray_color(sigma, delta, colors):
+    """
+        Computes the color of rays by integrating the contributions of sampled points along each ray
+        using a numerically stable method that operates in the log space to avoid underflow.
+
+        Parameters:
+            sigma (torch.Tensor): Density estimates along the ray [batch_size, bins].
+            delta (torch.Tensor): Distances between sampled points along the ray [batch_size, bins].
+            colors (torch.Tensor): Colors at each sampled point [batch_size, bins, 3].
+
+        Returns:
+            torch.Tensor: Integrated color of each ray [batch_size, 3].
+        """
     alpha = 1 - torch.exp(-sigma * delta)  # [batch_size, bins]
 
     transmittance = torch.cumprod(1 - alpha, 1)
@@ -124,6 +183,9 @@ def integrate_ray_color(sigma, delta, colors):
 
 
 def render_rays(model, ray_origins, ray_directions, near, far, bins):
+    """
+    Wraps the previous 3 functions; computes the entire volume rendering pipeline.
+    """
     x, delta = sample_ray_positions(ray_origins, ray_directions, near, far, bins)
     sigma, colors = evaluate_rays(model, ray_directions, bins, x)
 

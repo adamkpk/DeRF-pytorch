@@ -61,8 +61,9 @@ def test(model_derf, model_voronoi, dataset, near, far, epoch, img_index, bins, 
             if torch.any(region_mask):
                 head_sigma, head_colors = evaluate_rays(head, ray_directions_, bins, x, region_mask)
                 regenerated_px_values = integrate_ray_color(head_sigma, delta, head_colors)
-            else:
-                regenerated_px_values = torch.zeros(ray_origins_.shape[0], 3).to(DEVICE)
+            else:  # if no samples in the batch are evaluated by head {head_index}
+                # ones for white background
+                regenerated_px_values = torch.ones(ray_origins_.shape[0], 3).to(DEVICE)
 
             data[head_index].append(regenerated_px_values)
 
