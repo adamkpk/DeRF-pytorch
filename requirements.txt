@@ -1,0 +1,10 @@
+torch~=2.2.2+cu121
+scipy~=1.13.0
+numpy~=1.26.4
+tqdm~=4.66.2
+pillow~=10.3.0
+matplotlib~=3.8.3
+lpips~=0.1.4
+scikit-image~=0.22.0
+torchvision~=0.17.2+cu121
+kornia~=0.7.2
