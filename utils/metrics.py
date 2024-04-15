@@ -36,7 +36,7 @@ def compute_lpips(prediction, target):
     target = torch.Tensor(target).permute(2, 0, 1).unsqueeze(0)
 
     loss_fn = lpips.LPIPS(net='alex', version='0.1')
-    return loss_fn.forward(prediction, target)
+    return loss_fn(prediction, target).item()
 
 
 def aggregate_metrics(results_dir, epoch):

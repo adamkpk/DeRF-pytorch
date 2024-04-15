@@ -6,14 +6,14 @@ DEVICE = 'cuda'
 # Options: blender, llff
 DATASET_NAME = 'blender'
 
-# Options: blender -> lego, drums, ship    llff -> fern, flower
+# Options: blender -> lego, drums    llff -> fern, flower
 DATASET_TYPE = 'lego'
 
 # Options: 1, 2
 TRAINING_ACCELERATION = 1
 
 # Options: True -> tests all epochs, False -> tests only the last epoch
-TEST_ALL_EPOCHS = False
+TEST_ALL_EPOCHS = True
 
 HEAD_COUNT = 8
 
@@ -40,8 +40,7 @@ DATASET_SIZE_DICT = {
 DATASET_TEST_SIZE = {
     'blender': {
         'lego': 200,
-        'drums': 200,
-        'ship': 200
+        'drums': 200
     },
     'llff': {
         'fern': 20,

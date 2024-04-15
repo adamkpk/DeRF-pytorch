@@ -26,8 +26,7 @@ from model.nerf import (NeRF,
 
 from model.derf import (Voronoi,
                         DeRF,
-                        ray_contributions,
-                        partition_samples)
+                        ray_contributions)
 
 
 def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_nerf, near, far):
@@ -40,7 +39,6 @@ def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_
 
     for j in range(voronoi_epochs):
         iters = 0
-        total_iters = len(voronoi_data_loader)
 
         epoch_losses = []
         epoch_start_time = time.time()
@@ -76,13 +74,13 @@ def train_voronoi(model_voronoi, voronoi_optimizer, voronoi_data_loader, coarse_
                 min_uniform_loss.requires_grad = False
 
             # mean density-weighted head contributions across all rays in batch
-            W_phi = torch.mean(contributions, dim=0)
+            w_phi = torch.mean(contributions, dim=0)
 
-            loss = torch.norm(W_phi) - min_uniform_loss
+            loss = torch.norm(w_phi) - min_uniform_loss
             epoch_losses.append(loss.item())
 
             if iters % 20 == 0:
-                print(f'Loss: {loss.item():.6f}    Stdev: {np.std(W_phi.detach().cpu().numpy()):.6f}')
+                print(f'Loss: {loss.item():.6f}    Stdev: {np.std(w_phi.detach().cpu().numpy()):.6f}')
 
             loss.backward()
             voronoi_optimizer.step()

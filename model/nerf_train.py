@@ -91,8 +91,6 @@ def training_loop():
 
     data_loader = DataLoader(training_dataset, batch_size=1024, shuffle=True)
 
-    model.load_state_dict(torch.load(f'./../checkpoints/nerf/{DATASET_NAME}/{DATASET_TYPE}/e29.pt'))
-
     train(model, model_optimizer, model_scheduler, data_loader,
           near, far, int(DATASET_EPOCHS[DATASET_NAME] / TRAINING_ACCELERATION), NUM_BINS['fine'])
 

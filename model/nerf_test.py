@@ -73,7 +73,7 @@ def test(model, dataset, near, far, epoch, img_index, bins, height, width, chunk
         'rmse': compute_rmse(prediction, target),
         'psnr': compute_psnr(prediction, target),
         'ssim': compute_ssim(prediction, target),
-        'lpips': float(compute_lpips(prediction, target)[0][0][0][0])
+        'lpips': compute_lpips(prediction, target)
     }
 
     metrics_path = os.path.join(results_dir, f'e{epoch}_metrics{img_index}.json')

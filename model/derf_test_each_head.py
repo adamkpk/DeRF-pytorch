@@ -1,13 +1,11 @@
 import os
 import re
 import pickle
-import json
 from datetime import datetime
 import numpy as np
 from tqdm import tqdm
 import torch
 from PIL import Image
-from scipy import ndimage
 
 from config import (DEVICE,
                     TEST_ALL_EPOCHS,
@@ -17,20 +15,12 @@ from config import (DEVICE,
                     DATASET_SIZE_DICT,
                     DATASET_TEST_SIZE)
 
-from utils.metrics import (compute_rmse,
-                           compute_psnr,
-                           compute_ssim,
-                           compute_lpips,
-                           aggregate_metrics,
-                           aggregate_images)
-
 from model.nerf import (sample_ray_positions,
                         evaluate_rays,
                         integrate_ray_color)
 
 from model.derf import (Voronoi,
-                        DeRF,
-                        partition_samples)
+                        DeRF)
 
 
 @torch.no_grad()

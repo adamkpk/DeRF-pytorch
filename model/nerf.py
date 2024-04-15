@@ -123,7 +123,8 @@ def evaluate_rays(model, ray_directions, bins, x, mask=None):
         ray_directions (torch.Tensor): Tensor of ray directions, shape [batch_size, 3].
         bins (int): Number of bins used in ray sampling, corresponding to the second dimension of x.
         x (torch.Tensor): Sampled points along rays, shape [batch_size, bins, 3].
-        mask (torch.Tensor, optional): A binary mask indicating which rays or points to evaluate, shape [batch_size, bins].
+        mask (torch.Tensor, optional): A binary mask indicating which rays or points to evaluate,
+        shape [batch_size, bins].
 
     Returns:
         tuple: A tuple containing:

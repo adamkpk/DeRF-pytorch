@@ -30,8 +30,7 @@ from model.nerf import (sample_ray_positions,
                         integrate_ray_color)
 
 from model.derf import (Voronoi,
-                        DeRF,
-                        partition_samples)
+                        DeRF)
 
 
 @torch.no_grad()
@@ -40,8 +39,6 @@ def test(model_derf, model_voronoi, dataset, near, far, epoch, img_index, bins, 
 
     ray_origins = dataset[img_index * height * width: (img_index + 1) * height * width, :3]
     ray_directions = dataset[img_index * height * width: (img_index + 1) * height * width, 3:6]
-
-    head_positions = model_voronoi.head_positions.detach().cpu().numpy()
 
     data = []   # list of regenerated pixel values
 
@@ -99,7 +96,7 @@ def test(model_derf, model_voronoi, dataset, near, far, epoch, img_index, bins, 
         'rmse': compute_rmse(prediction, target),
         'psnr': compute_psnr(prediction, target),
         'ssim': compute_ssim(prediction, target),
-        'lpips': float(compute_lpips(prediction, target)[0][0][0][0])
+        'lpips': compute_lpips(prediction, target)
     }
 
     metrics_path = os.path.join(results_dir, f'e{epoch}_metrics{img_index}.json')
