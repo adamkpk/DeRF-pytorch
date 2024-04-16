@@ -1,7 +1,7 @@
 # DeRF-pytorch
 
-This repository is an unofficial implementation of [DeRF: Decomposed Radiance Fields](https://arxiv.org/abs/2011.12490).
-This is for educational and exploratory purposes only and does not guarantee accurate recreation.
+This repository is an unofficial blind reproduction attempt of [DeRF: Decomposed Radiance Fields](https://arxiv.org/abs/2011.12490), appearing at CVPR2021.
+We make no guarantees on accuracy - this effort is for educational and exploratory purposes only.
 
 ## Requirements
 
@@ -21,7 +21,7 @@ DEVICE -> cpu, cuda
 DATASET_NAME -> blender (for synthetic), llff (for real)
 DATASET_TYPE -> lego, drums (blender examples), fern, flower (llff examples)
 TRAINING_ACCELERATION -> 1 or 2 (use only if you want quick, cheap results)
-TEST_ALL_EPOCHS -> True, or False (will only test the last found epoch)
+TEST_ALL_EPOCHS -> True, or False (will only test the checkpoint for last found epoch)
 HEAD_COUNT -> any integer (number of heads for Voronoi partitioning)
 VORONOI_INIT_SCHEME -> 'uniform', 'stratified_uniform', 'deterministic_grid' (view volume init)
 ```
@@ -78,5 +78,5 @@ In order to use a pre-trained model, load the state dict in the `training_loop()
 
 ## Results
 
-Refer to associated paper for results, otherwise feel free to generate your own to confirm.
-All results in our paper were performed benchmarking on 1 NVIDIA GeForce GTX 1080 Ti.
+Refer to associated report for results, otherwise feel free to generate your own to confirm.
+All results in our report were performed benchmarking on 1 NVIDIA GeForce GTX 1080 Ti.
